@@ -1,0 +1,39 @@
+services:
+  central-server:
+    build:
+      context: .
+      dockerfile: apps/central-server/Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - central-data:/app/data
+    environment:
+      - LOG_SERVER_URL=http://log-server:3002
+    depends_on:
+      - log-server
+    restart: unless-stopped
+
+  web-console:
+    build:
+      context: .
+      dockerfile: apps/web-console/Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - central-server
+    restart: unless-stopped
+
+  log-server:
+    build:
+      context: .
+      dockerfile: apps/log-server/Dockerfile
+    ports:
+      - "5140:5140"
+      - "3002:3002"
+    volumes:
+      - log-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  central-data:
+  log-data:
