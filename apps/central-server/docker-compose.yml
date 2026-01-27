@@ -1,0 +1,18 @@
+services:
+  central-server:
+    build:
+      context: ../../
+      dockerfile: apps/central-server/Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - central-data:/app/data
+    networks:
+      - management-net
+    restart: unless-stopped
+
+volumes:
+  central-data:
+
+networks:
+  management-net:

@@ -1,0 +1,19 @@
+services:
+  log-server:
+    build:
+      context: ../../
+      dockerfile: apps/log-server/Dockerfile
+    ports:
+      - "5140:5140"
+      - "3002:3002"
+    volumes:
+      - log-data:/app/data
+    networks:
+      - log-net
+    restart: unless-stopped
+
+volumes:
+  log-data:
+
+networks:
+  log-net:
