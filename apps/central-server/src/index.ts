@@ -6,6 +6,7 @@ import { getDb } from './db/connection.js';
 import { piRouter } from './routes/pi.routes.js';
 import { topologyRouter } from './routes/topology.routes.js';
 import { logRouter } from './routes/log.routes.js';
+import { systemRouter } from './routes/system.routes.js';
 import { setupWebSocket } from './ws/index.js';
 import { startMonitor } from './services/pi-monitor.service.js';
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/pis', piRouter);
 app.use('/api/topology', topologyRouter);
 app.use('/api/logs', logRouter);
+app.use('/api/system', systemRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

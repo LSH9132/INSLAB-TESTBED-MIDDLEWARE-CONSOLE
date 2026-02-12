@@ -1,0 +1,12 @@
+node_modules
+.git
+.DS_Store
+dist
+.next
+coverage
+*.log
+apps/*/node_modules
+apps/*/.next
+apps/*/dist
+packages/*/node_modules
+packages/*/dist

@@ -1,3 +1,102 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Pretendard 폰트 (토스가 사용하는 한글 폰트) */
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+  :root {
+    /* Toss 컬러 팔레트 */
+    --toss-blue: #3182F6;
+    --toss-blue-light: #E5F0FF;
+    --toss-blue-dark: #1B64DA;
+
+    --toss-gray-50: #F9FAFB;
+    --toss-gray-100: #F2F4F6;
+    --toss-gray-200: #E5E8EB;
+    --toss-gray-300: #D1D6DB;
+    --toss-gray-400: #B0B8C1;
+    --toss-gray-500: #8B95A1;
+    --toss-gray-600: #6B7684;
+    --toss-gray-700: #4E5968;
+    --toss-gray-800: #333D4B;
+    --toss-gray-900: #191F28;
+
+    --toss-green: #0BC27C;
+    --toss-red: #F04452;
+    --toss-yellow: #FFB800;
+
+    /* Base Colors */
+    --background: #F9FAFB;
+    --foreground: #191F28;
+    --card: #ffffff;
+    --card-foreground: #191F28;
+    --popover: #ffffff;
+    --popover-foreground: #191F28;
+    --primary: #3182F6;
+    --primary-foreground: #ffffff;
+    --secondary: #F2F4F6;
+    --secondary-foreground: #191F28;
+    --muted: #F2F4F6;
+    --muted-foreground: #6B7684;
+    --accent: #F2F4F6;
+    --accent-foreground: #191F28;
+    --destructive: #F04452;
+    --destructive-foreground: #ffffff;
+    --border: #E5E8EB;
+    --input: #E5E8EB;
+    --ring: #3182F6;
+  }
+
+  .dark {
+    /* Dark Mode Overrides */
+    --background: #111827;
+    /* gray-950 */
+    --foreground: #F9FAFB;
+    /* gray-50 */
+    --card: #1F2937;
+    /* gray-800 */
+    --card-foreground: #F9FAFB;
+    --popover: #1F2937;
+    --popover-foreground: #F9FAFB;
+    --primary: #3182F6;
+    --primary-foreground: #ffffff;
+    --secondary: #374151;
+    /* gray-700 */
+    --secondary-foreground: #F9FAFB;
+    --muted: #374151;
+    --muted-foreground: #9CA3AF;
+    /* gray-400 */
+    --accent: #374151;
+    --accent-foreground: #F9FAFB;
+    --destructive: #F04452;
+    /* You might want a slightly lighter red for dark mode */
+    --destructive-foreground: #ffffff;
+    --border: #374151;
+    --input: #374151;
+    --ring: #3182F6;
+  }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  .toss-shadow {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  .toss-shadow-md {
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  .toss-shadow-lg {
+    box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.12);
+  }
+}

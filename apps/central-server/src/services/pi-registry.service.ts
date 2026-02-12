@@ -12,6 +12,16 @@ export function getPiById(id: string): PiNode | undefined {
   return row ? rowToPiNode(row) : undefined;
 }
 
+export function checkDuplicateHostname(hostname: string): boolean {
+  const row = getDb().prepare('SELECT id FROM pi_nodes WHERE hostname = ?').get(hostname) as any;
+  return !!row;
+}
+
+export function checkDuplicateIp(ip: string): boolean {
+  const row = getDb().prepare('SELECT id FROM pi_nodes WHERE ip_management = ? OR ip_ring = ?').get(ip, ip) as any;
+  return !!row;
+}
+
 export function createPi(req: PiCreateRequest): PiNode {
   const id = uuid();
   const maxPos = getDb().prepare('SELECT MAX(ring_position) as m FROM pi_nodes').get() as any;
