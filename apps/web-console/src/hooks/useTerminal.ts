@@ -34,7 +34,15 @@ export function useTerminal(containerRef: React.RefObject<HTMLDivElement | null>
       term.focus();
     };
 
-    ws.onmessage = (e) => term.write(new Uint8Array(e.data as ArrayBuffer));
+    ws.onmessage = (e) => {
+      if (e.data instanceof ArrayBuffer) {
+        term.write(new Uint8Array(e.data));
+      } else if (typeof e.data === 'string') {
+        // SSH에서 텍스트 메시지 (예: 연결 메시지) 수신
+        term.write(e.data);
+      }
+      // Blob 타입은 현재 사용하지 않음 (ws 라이브러리의 binaryType=arraybuffer로 Blob 발생 안 함)
+    };
 
     ws.onerror = () => {
       setStatus('error');
