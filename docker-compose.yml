@@ -7,8 +7,10 @@ services:
       - "3001:3001"
     volumes:
       - central-data:/app/data
+      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
     environment:
       - LOG_SERVER_URL=http://log-server:3002
+      - SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa
     depends_on:
       - log-server
     restart: unless-stopped
@@ -19,6 +21,8 @@ services:
       dockerfile: apps/web-console/Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      - CENTRAL_SERVER_URL=http://central-server:3001
     depends_on:
       - central-server
     restart: unless-stopped

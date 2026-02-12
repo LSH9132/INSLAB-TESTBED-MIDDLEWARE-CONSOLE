@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllPis, getPiById, createPi, deletePi } from '../services/pi-registry.service.js';
+import { getAllPis, getPiById, createPi, deletePi, checkDuplicateHostname, checkDuplicateIp } from '../services/pi-registry.service.js';
 
 export const piRouter = Router();
 
@@ -18,6 +18,18 @@ piRouter.post('/', (req, res) => {
   if (!hostname || !ipManagement || !ipRing) {
     return res.status(400).json({ error: 'hostname, ipManagement, ipRing required' });
   }
+
+  // Check for duplicates
+  if (checkDuplicateHostname(hostname)) {
+    return res.status(409).json({ error: 'A Pi with this hostname already exists' });
+  }
+  if (checkDuplicateIp(ipManagement)) {
+    return res.status(409).json({ error: 'A Pi with this management IP already exists' });
+  }
+  if (checkDuplicateIp(ipRing)) {
+    return res.status(409).json({ error: 'A Pi with this ring IP already exists' });
+  }
+
   const pi = createPi({ hostname, ipManagement, ipRing, sshPort, sshUser });
   res.status(201).json(pi);
 });
