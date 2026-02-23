@@ -2,8 +2,16 @@ import { Client } from 'ssh2';
 import { readFileSync } from 'fs';
 import { config } from '../config.js';
 import type WebSocket from 'ws';
+import type { PiAuthMethod } from '@inslab/shared';
 
-export function attachTerminal(ws: WebSocket, host: string, port: number, username: string) {
+export function attachTerminal(
+  ws: WebSocket,
+  host: string,
+  port: number,
+  username: string,
+  authMethod: PiAuthMethod = 'key',
+  sshPassword?: string | null,
+) {
   const ssh = new Client();
 
   ssh.on('ready', () => {
@@ -48,11 +56,18 @@ export function attachTerminal(ws: WebSocket, host: string, port: number, userna
     ws.close();
   });
 
-  const keyPath = config.sshPrivateKeyPath.replace('~', process.env.HOME || '');
-  ssh.connect({
+  const connectOptions: any = {
     host,
     port,
     username,
-    privateKey: readFileSync(keyPath),
-  });
+  };
+
+  if (authMethod === 'password' && sshPassword) {
+    connectOptions.password = sshPassword;
+  } else {
+    const keyPath = config.sshPrivateKeyPath.replace('~', process.env.HOME || '');
+    connectOptions.privateKey = readFileSync(keyPath);
+  }
+
+  ssh.connect(connectOptions);
 }

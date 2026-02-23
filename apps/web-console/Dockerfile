@@ -1,6 +1,8 @@
 FROM node:20-slim AS base
 RUN corepack enable
 
+ARG NEXT_PUBLIC_CENTRAL_SERVER_URL
+
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
@@ -10,6 +12,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY packages/shared/ packages/shared/
 COPY apps/web-console/ apps/web-console/
+
+# Create .env.local with NEXT_PUBLIC variables for client-side
+RUN echo "NEXT_PUBLIC_CENTRAL_SERVER_URL=${NEXT_PUBLIC_CENTRAL_SERVER_URL:-http://central-server:3001}" > apps/web-console/.env.local
+
 RUN pnpm --filter @inslab/shared build
 RUN pnpm --filter web-console build
 

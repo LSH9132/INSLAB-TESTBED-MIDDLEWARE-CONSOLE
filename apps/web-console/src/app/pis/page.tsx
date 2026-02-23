@@ -1,46 +1,67 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
-import type { PiNode } from '@inslab/shared';
+import type { PiNode, PiAuthMethod } from '@inslab/shared';
+
+const inputClass = (hasError: boolean) =>
+  `w-full bg-[#F9FAFB] dark:bg-gray-900 border ${hasError ? 'border-[#F04452]' : 'border-[#E5E8EB] dark:border-gray-700'
+  } rounded-xl px-4 py-3 text-[15px] text-[#191F28] dark:text-gray-100 placeholder-[#B0B8C1] dark:placeholder-gray-500 focus:outline-none focus:border-[#3182F6] focus:bg-white dark:focus:bg-gray-800 transition-all`;
+
+const labelClass = 'block text-[#191F28] dark:text-gray-200 text-[14px] font-semibold mb-2';
+const errorClass = 'text-[13px] text-[#F04452] mt-2 font-medium';
+
+interface FormState {
+  name: string;
+  ip: string;
+  sshUser: string;
+  sshPort: string;
+  authMethod: PiAuthMethod;
+  sshPassword: string;
+}
+
+const defaultForm: FormState = {
+  name: '',
+  ip: '',
+  sshUser: 'pi',
+  sshPort: '22',
+  authMethod: 'key',
+  sshPassword: '',
+};
+
+type ValidationErrors = Partial<Record<keyof FormState, string>>;
 
 export default function PiManagementPage() {
   const [pis, setPis] = useState<PiNode[]>([]);
-  const [form, setForm] = useState({ hostname: '', ipManagement: '', ipRing: '', sshUser: 'pi', sshPort: '22' });
+  const [form, setForm] = useState<FormState>(defaultForm);
   const [error, setError] = useState<string>('');
-  const [validationErrors, setValidationErrors] = useState<{ hostname?: string; ipManagement?: string; ipRing?: string; sshPort?: string }>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   const load = () => apiFetch<PiNode[]>('/api/pis').then(setPis).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const isValidIP = (ip: string): boolean => {
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(ip)) return false;
+    return ip.split('.').every(p => { const n = parseInt(p, 10); return n >= 0 && n <= 255; });
+  };
+
   const validateForm = (): boolean => {
-    const errors: { hostname?: string; ipManagement?: string; ipRing?: string; sshPort?: string } = {};
+    const errors: ValidationErrors = {};
 
-    // 필수 필드 검증
-    if (!form.hostname.trim()) {
-      errors.hostname = '호스트명을 입력해주세요';
-    } else if (pis.some(pi => pi.hostname.toLowerCase() === form.hostname.toLowerCase())) {
-      errors.hostname = '이미 등록된 호스트명입니다';
+    if (!form.name.trim()) {
+      errors.name = '이름을 입력해주세요';
+    } else if (pis.some(pi => pi.name.toLowerCase() === form.name.toLowerCase())) {
+      errors.name = '이미 등록된 이름입니다';
     }
 
-    // Management IP 검증
-    if (!form.ipManagement.trim()) {
-      errors.ipManagement = 'Management IP를 입력해주세요';
-    } else if (!isValidIP(form.ipManagement)) {
-      errors.ipManagement = '올바른 IP 주소 형식이 아닙니다';
-    } else if (pis.some(pi => pi.ipManagement === form.ipManagement)) {
-      errors.ipManagement = '이미 등록된 Management IP입니다';
+    if (!form.ip.trim()) {
+      errors.ip = 'IP 주소를 입력해주세요';
+    } else if (!isValidIP(form.ip)) {
+      errors.ip = '올바른 IP 주소 형식이 아닙니다';
+    } else if (pis.some(pi => pi.ip === form.ip)) {
+      errors.ip = '이미 등록된 IP 주소입니다';
     }
 
-    // Ring IP 검증
-    if (!form.ipRing.trim()) {
-      errors.ipRing = 'Ring IP를 입력해주세요';
-    } else if (!isValidIP(form.ipRing)) {
-      errors.ipRing = '올바른 IP 주소 형식이 아닙니다';
-    } else if (pis.some(pi => pi.ipRing === form.ipRing)) {
-      errors.ipRing = '이미 등록된 Ring IP입니다';
-    }
-
-    // SSH 포트 검증
     const port = Number(form.sshPort);
     if (!form.sshPort.trim()) {
       errors.sshPort = 'SSH 포트를 입력해주세요';
@@ -48,37 +69,32 @@ export default function PiManagementPage() {
       errors.sshPort = '올바른 포트 번호(1-65535)를 입력해주세요';
     }
 
+    if (form.authMethod === 'password' && !form.sshPassword.trim()) {
+      errors.sshPassword = '비밀번호를 입력해주세요';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // IP 주소 형식 검증 함수
-  const isValidIP = (ip: string): boolean => {
-    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    if (!ipRegex.test(ip)) return false;
-
-    const parts = ip.split('.');
-    return parts.every(part => {
-      const num = parseInt(part, 10);
-      return num >= 0 && num <= 255;
-    });
-  };
-
-
   const handleAdd = async () => {
     setError('');
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       await apiFetch('/api/pis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, sshPort: Number(form.sshPort) }),
+        body: JSON.stringify({
+          name: form.name,
+          ip: form.ip,
+          sshUser: form.sshUser,
+          sshPort: Number(form.sshPort),
+          authMethod: form.authMethod,
+          sshPassword: form.authMethod === 'password' ? form.sshPassword : undefined,
+        }),
       });
-      setForm({ hostname: '', ipManagement: '', ipRing: '', sshUser: 'pi', sshPort: '22' });
+      setForm(defaultForm);
       setValidationErrors({});
       load();
     } catch (err: any) {
@@ -98,118 +114,129 @@ export default function PiManagementPage() {
       : status === 'offline'
         ? 'bg-[#FEF1F2] text-[#F04452] border-[#F04452]'
         : 'bg-[#F2F4F6] text-[#8B95A1] border-[#D1D6DB]';
-
+    const dotColor = status === 'online' ? 'bg-[#0BC27C]' : status === 'offline' ? 'bg-[#F04452]' : 'bg-[#8B95A1]';
+    const label = status === 'online' ? '온라인' : status === 'offline' ? '오프라인' : '알 수 없음';
     return (
       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium border ${styles}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${status === 'online' ? 'bg-[#0BC27C]' : status === 'offline' ? 'bg-[#F04452]' : 'bg-[#8B95A1]'}`} />
-        {status === 'online' ? '온라인' : status === 'offline' ? '오프라인' : '알 수 없음'}
+        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+        {label}
       </span>
     );
   };
 
   return (
     <div>
-      {/* 토스 스타일 헤더 */}
       <h1 className="text-[32px] font-bold text-[#191F28] dark:text-gray-50 mb-2">Pi 관리</h1>
       <p className="text-[#6B7684] dark:text-gray-400 text-[15px] mb-8">Raspberry Pi 노드를 등록하고 관리하세요</p>
 
-      {/* 토스 스타일 등록 폼 */}
+      {/* 등록 폼 */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 mb-6 toss-shadow transition-colors duration-200">
         <h2 className="text-[20px] font-bold text-[#191F28] dark:text-gray-100 mb-6">새 Raspberry Pi 등록</h2>
 
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Hostname */}
+
+            {/* 이름 */}
             <div>
-              <label className="block text-[#191F28] dark:text-gray-200 text-[14px] font-semibold mb-2">
-                호스트명 <span className="text-[#F04452]">*</span>
-              </label>
+              <label className={labelClass}>이름 <span className="text-[#F04452]">*</span></label>
               <input
-                placeholder="예: raspberrypi-01"
-                value={form.hostname}
-                onChange={(e) => setForm({ ...form, hostname: e.target.value })}
-                className={`w-full bg-[#F9FAFB] dark:bg-gray-900 border ${validationErrors.hostname ? 'border-[#F04452]' : 'border-[#E5E8EB] dark:border-gray-700'} rounded-xl px-4 py-3 text-[15px] text-[#191F28] dark:text-gray-100 placeholder-[#B0B8C1] dark:placeholder-gray-500 focus:outline-none focus:border-[#3182F6] focus:bg-white dark:focus:bg-gray-800 transition-all`}
+                placeholder="예: pi-lab-01"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className={inputClass(!!validationErrors.name)}
               />
-              {validationErrors.hostname && (
-                <p className="text-[13px] text-[#F04452] mt-2 font-medium">{validationErrors.hostname}</p>
-              )}
+              {validationErrors.name && <p className={errorClass}>{validationErrors.name}</p>}
             </div>
 
-            {/* Management IP */}
+            {/* IP 주소 */}
             <div>
-              <label className="block text-[#191F28] dark:text-gray-200 text-[14px] font-semibold mb-2">
-                Management IP <span className="text-[#F04452]">*</span>
-              </label>
+              <label className={labelClass}>IP 주소 <span className="text-[#F04452]">*</span></label>
               <input
                 placeholder="예: 192.168.1.100"
-                value={form.ipManagement}
-                onChange={(e) => setForm({ ...form, ipManagement: e.target.value })}
-                className={`w-full bg-[#F9FAFB] dark:bg-gray-900 border ${validationErrors.ipManagement ? 'border-[#F04452]' : 'border-[#E5E8EB] dark:border-gray-700'} rounded-xl px-4 py-3 text-[15px] text-[#191F28] dark:text-gray-100 placeholder-[#B0B8C1] dark:placeholder-gray-500 focus:outline-none focus:border-[#3182F6] focus:bg-white dark:focus:bg-gray-800 transition-all`}
+                value={form.ip}
+                onChange={(e) => setForm({ ...form, ip: e.target.value })}
+                className={inputClass(!!validationErrors.ip)}
               />
-              {validationErrors.ipManagement && (
-                <p className="text-[13px] text-[#F04452] mt-2 font-medium">{validationErrors.ipManagement}</p>
-              )}
+              {validationErrors.ip && <p className={errorClass}>{validationErrors.ip}</p>}
             </div>
 
-            {/* Ring IP */}
+            {/* SSH 사용자 */}
             <div>
-              <label className="block text-[#191F28] dark:text-gray-200 text-[14px] font-semibold mb-2">
-                Ring IP <span className="text-[#F04452]">*</span>
-              </label>
-              <input
-                placeholder="예: 10.0.0.100"
-                value={form.ipRing}
-                onChange={(e) => setForm({ ...form, ipRing: e.target.value })}
-                className={`w-full bg-[#F9FAFB] dark:bg-gray-900 border ${validationErrors.ipRing ? 'border-[#F04452]' : 'border-[#E5E8EB] dark:border-gray-700'} rounded-xl px-4 py-3 text-[15px] text-[#191F28] dark:text-gray-100 placeholder-[#B0B8C1] dark:placeholder-gray-500 focus:outline-none focus:border-[#3182F6] focus:bg-white dark:focus:bg-gray-800 transition-all`}
-              />
-              {validationErrors.ipRing && (
-                <p className="text-[13px] text-[#F04452] mt-2 font-medium">{validationErrors.ipRing}</p>
-              )}
-            </div>
-
-            {/* SSH User */}
-            <div>
-              <label className="block text-[#191F28] dark:text-gray-200 text-[14px] font-semibold mb-2">SSH 사용자</label>
+              <label className={labelClass}>SSH 사용자</label>
               <input
                 placeholder="pi"
                 value={form.sshUser}
                 onChange={(e) => setForm({ ...form, sshUser: e.target.value })}
-                className="w-full bg-[#F9FAFB] dark:bg-gray-900 border border-[#E5E8EB] dark:border-gray-700 rounded-xl px-4 py-3 text-[15px] text-[#191F28] dark:text-gray-100 placeholder-[#B0B8C1] dark:placeholder-gray-500 focus:outline-none focus:border-[#3182F6] focus:bg-white dark:focus:bg-gray-800 transition-all"
+                className={inputClass(false)}
               />
             </div>
 
-            {/* SSH Port */}
+            {/* SSH 포트 */}
             <div>
-              <label className="block text-[#191F28] dark:text-gray-200 text-[14px] font-semibold mb-2">SSH 포트</label>
+              <label className={labelClass}>SSH 포트</label>
               <input
                 placeholder="22"
                 value={form.sshPort}
                 onChange={(e) => setForm({ ...form, sshPort: e.target.value })}
-                className={`w-full bg-[#F9FAFB] dark:bg-gray-900 border ${validationErrors.sshPort ? 'border-[#F04452]' : 'border-[#E5E8EB] dark:border-gray-700'} rounded-xl px-4 py-3 text-[15px] text-[#191F28] dark:text-gray-100 placeholder-[#B0B8C1] dark:placeholder-gray-500 focus:outline-none focus:border-[#3182F6] focus:bg-white dark:focus:bg-gray-800 transition-all`}
+                className={inputClass(!!validationErrors.sshPort)}
               />
-              {validationErrors.sshPort && (
-                <p className="text-[13px] text-[#F04452] mt-2 font-medium">{validationErrors.sshPort}</p>
-              )}
+              {validationErrors.sshPort && <p className={errorClass}>{validationErrors.sshPort}</p>}
             </div>
+
+            {/* 인증 방식 */}
+            <div>
+              <label className={labelClass}>인증 방식 <span className="text-[#F04452]">*</span></label>
+              <select
+                value={form.authMethod}
+                onChange={(e) => setForm({ ...form, authMethod: e.target.value as PiAuthMethod, sshPassword: '' })}
+                className={inputClass(false)}
+              >
+                <option value="key">SSH 키 (권장)</option>
+                <option value="password">비밀번호</option>
+              </select>
+            </div>
+
+            {/* 비밀번호 (password 인증 시만 표시) */}
+            {form.authMethod === 'password' && (
+              <div>
+                <label className={labelClass}>비밀번호 <span className="text-[#F04452]">*</span></label>
+                <input
+                  type="password"
+                  placeholder="SSH 비밀번호"
+                  value={form.sshPassword}
+                  onChange={(e) => setForm({ ...form, sshPassword: e.target.value })}
+                  className={inputClass(!!validationErrors.sshPassword)}
+                />
+                {validationErrors.sshPassword && <p className={errorClass}>{validationErrors.sshPassword}</p>}
+              </div>
+            )}
           </div>
 
+          {/* SSH 키 안내 */}
+          {form.authMethod === 'key' && (
+            <div className="p-4 bg-[#F0F6FF] dark:bg-blue-900/20 border border-[#3182F6]/30 rounded-xl">
+              <p className="text-[13px] text-[#3182F6] dark:text-blue-400 font-medium">
+                🔑 SSH 키 인증을 사용합니다. central-server의 SSH 공개 키가 Pi의 <code className="bg-[#3182F6]/10 px-1 rounded">~/.ssh/authorized_keys</code>에 등록되어 있어야 합니다.
+              </p>
+            </div>
+          )}
+
           {error && (
-            <div className="p-4 bg-[#FEF1F2] dark:bg-red-900/20 border border-[#F04452] darker:border-red-800 rounded-xl">
+            <div className="p-4 bg-[#FEF1F2] dark:bg-red-900/20 border border-[#F04452] rounded-xl">
               <p className="text-[14px] text-[#F04452] dark:text-red-400 font-medium">{error}</p>
             </div>
           )}
 
           <button
             onClick={handleAdd}
-            disabled={Object.keys(validationErrors).length > 0}
-            className="w-full md:w-auto bg-[#3182F6] hover:bg-[#1B64DA] disabled:bg-[#E5E8EB] dark:disabled:bg-gray-700 disabled:text-[#B0B8C1] dark:disabled:text-gray-500 text-white px-8 py-4 rounded-xl text-[15px] font-bold transition-colors"
+            className="w-full md:w-auto bg-[#3182F6] hover:bg-[#1B64DA] text-white px-8 py-4 rounded-xl text-[15px] font-bold transition-colors"
           >
             Raspberry Pi 추가하기
           </button>
         </div>
       </div>
 
-      {/* 토스 스타일 Pi 목록 */}
+      {/* Pi 목록 */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden toss-shadow transition-colors duration-200">
         {pis.length === 0 ? (
           <div className="p-16 text-center">
@@ -226,24 +253,34 @@ export default function PiManagementPage() {
             <table className="w-full">
               <thead className="bg-[#F9FAFB] dark:bg-gray-900 border-b border-[#E5E8EB] dark:border-gray-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">호스트명</th>
-                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">Management IP</th>
-                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">Ring IP</th>
+                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">이름</th>
+                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">IP 주소</th>
+                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">SSH</th>
+                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">인증</th>
                   <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">상태</th>
-                  <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">링 위치</th>
                   <th className="px-6 py-4 text-left text-[13px] font-bold text-[#4E5968] dark:text-gray-400">작업</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {pis.map((pi, index) => (
-                  <tr key={pi.id} className={`border-b border-[#F2F4F6] dark:border-gray-700 hover:bg-[#F9FAFB] dark:hover:bg-gray-700/50 transition-colors ${index === pis.length - 1 ? 'border-0' : ''}`}>
-                    <td className="px-6 py-4 text-[14px] font-semibold text-[#191F28] dark:text-gray-100">{pi.hostname}</td>
-                    <td className="px-6 py-4 text-[14px] text-[#4E5968] dark:text-gray-400">{pi.ipManagement}</td>
-                    <td className="px-6 py-4 text-[14px] text-[#4E5968] dark:text-gray-400">{pi.ipRing}</td>
-                    <td className="px-6 py-4">{getStatusBadge(pi.status)}</td>
-                    <td className="px-6 py-4 text-[14px] text-[#4E5968] dark:text-gray-400">
-                      {pi.ringPosition !== null ? `#${pi.ringPosition}` : '-'}
+                  <tr
+                    key={pi.id}
+                    className={`border-b border-[#F2F4F6] dark:border-gray-700 hover:bg-[#F9FAFB] dark:hover:bg-gray-700/50 transition-colors ${index === pis.length - 1 ? 'border-0' : ''}`}
+                  >
+                    <td className="px-6 py-4 text-[14px] font-semibold text-[#191F28] dark:text-gray-100">{pi.name}</td>
+                    <td className="px-6 py-4 text-[14px] text-[#4E5968] dark:text-gray-400 font-mono">{pi.ip}</td>
+                    <td className="px-6 py-4 text-[14px] text-[#4E5968] dark:text-gray-400 font-mono">
+                      {pi.sshUser}@{pi.ip}:{pi.sshPort}
                     </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border ${pi.authMethod === 'key'
+                          ? 'bg-[#F0F6FF] text-[#3182F6] border-[#3182F6]/30 dark:bg-blue-900/20 dark:text-blue-400'
+                          : 'bg-[#FFF7E6] text-[#F5A623] border-[#F5A623]/30 dark:bg-yellow-900/20 dark:text-yellow-400'
+                        }`}>
+                        {pi.authMethod === 'key' ? '🔑 키' : '🔒 비밀번호'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{getStatusBadge(pi.status)}</td>
                     <td className="px-6 py-4">
                       <button
                         onClick={() => window.open(`/terminal/${pi.id}`, '_blank')}

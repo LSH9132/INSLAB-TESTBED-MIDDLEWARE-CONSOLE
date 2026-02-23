@@ -7,3 +7,6 @@ export const WS_PATH_TERMINAL = '/ws/terminal';
 export const WS_PATH_STATUS = '/ws/status';
 
 export const PI_HEALTH_CHECK_INTERVAL_MS = 10_000;
+
+// 기본 WebSocket URL (실행 시 환경 변수로 오버라이드 가능)
+export const DEFAULT_CENTRAL_SERVER_URL = 'http://localhost:3001';

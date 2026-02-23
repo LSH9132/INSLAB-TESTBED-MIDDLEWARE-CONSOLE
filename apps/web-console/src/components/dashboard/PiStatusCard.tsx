@@ -30,23 +30,25 @@ export function PiStatusCard({ pi }: { pi: PiNode }) {
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 toss-shadow hover:toss-shadow-md transition-all duration-200">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="font-bold text-[#191F28] dark:text-gray-50 text-[16px] mb-1">{pi.hostname}</h3>
+          <h3 className="font-bold text-[#191F28] dark:text-gray-50 text-[16px] mb-1">{pi.name}</h3>
           {getStatusBadge(pi.status)}
         </div>
       </div>
 
       <div className="space-y-2 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-[#8B95A1] dark:text-gray-500 text-[13px] font-medium w-20">Management</span>
-          <span className="text-[#4E5968] dark:text-gray-400 text-[14px]">{pi.ipManagement}</span>
+          <span className="text-[#8B95A1] dark:text-gray-500 text-[13px] font-medium w-16">IP</span>
+          <span className="text-[#4E5968] dark:text-gray-400 text-[14px] font-mono">{pi.ip}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[#8B95A1] dark:text-gray-500 text-[13px] font-medium w-20">Ring</span>
-          <span className="text-[#4E5968] dark:text-gray-400 text-[14px]">{pi.ipRing}</span>
+          <span className="text-[#8B95A1] dark:text-gray-500 text-[13px] font-medium w-16">사용자</span>
+          <span className="text-[#4E5968] dark:text-gray-400 text-[14px] font-mono">{pi.sshUser}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[#8B95A1] dark:text-gray-500 text-[13px] font-medium w-20">링 위치</span>
-          <span className="text-[#4E5968] dark:text-gray-400 text-[14px]">#{pi.ringPosition ?? '-'}</span>
+          <span className="text-[#8B95A1] dark:text-gray-500 text-[13px] font-medium w-16">인증</span>
+          <span className={`text-[13px] font-medium ${pi.authMethod === 'key' ? 'text-[#3182F6]' : 'text-[#F5A623]'}`}>
+            {pi.authMethod === 'key' ? '🔑 키' : '🔒 비밀번호'}
+          </span>
         </div>
       </div>
 
