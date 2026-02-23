@@ -19,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="max-w-7xl mx-auto px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-8">
-                  <h1 className="text-xl font-bold text-[#191F28] dark:text-white">INSLAB Testbed</h1>
+                  <Link href="/">
+                    <h1 className="text-xl font-bold text-[#191F28] dark:text-white">INSLAB Testbed</h1>
+                  </Link>
                   <div className="flex items-center gap-6">
                     <Link
                       href="/"
