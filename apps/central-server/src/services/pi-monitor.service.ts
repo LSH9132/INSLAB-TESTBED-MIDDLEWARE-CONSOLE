@@ -7,7 +7,7 @@ export function startMonitor() {
   setInterval(async () => {
     const pis = getAllPis();
     for (const pi of pis) {
-      const online = await checkTcpPort(pi.ipManagement, pi.sshPort);
+      const online = await checkTcpPort(pi.ip, pi.sshPort);
       const status = online ? 'online' : 'offline';
       if (status !== pi.status) {
         updatePiStatus(pi.id, status);

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllPis, getPiById, createPi, deletePi, checkDuplicateHostname, checkDuplicateIp } from '../services/pi-registry.service.js';
+import { getAllPis, getPiById, createPi, deletePi, checkDuplicateName, checkDuplicateIp } from '../services/pi-registry.service.js';
 
 export const piRouter = Router();
 
@@ -14,23 +14,24 @@ piRouter.get('/:id', (req, res) => {
 });
 
 piRouter.post('/', (req, res) => {
-  const { hostname, ipManagement, ipRing, sshPort, sshUser } = req.body;
-  if (!hostname || !ipManagement || !ipRing) {
-    return res.status(400).json({ error: 'hostname, ipManagement, ipRing required' });
+  const { name, ip, sshPort, sshUser, authMethod, sshPassword } = req.body;
+
+  if (!name || !ip) {
+    return res.status(400).json({ error: 'name, ip required' });
   }
 
-  // Check for duplicates
-  if (checkDuplicateHostname(hostname)) {
-    return res.status(409).json({ error: 'A Pi with this hostname already exists' });
-  }
-  if (checkDuplicateIp(ipManagement)) {
-    return res.status(409).json({ error: 'A Pi with this management IP already exists' });
-  }
-  if (checkDuplicateIp(ipRing)) {
-    return res.status(409).json({ error: 'A Pi with this ring IP already exists' });
+  if (authMethod === 'password' && !sshPassword) {
+    return res.status(400).json({ error: 'sshPassword is required for password authentication' });
   }
 
-  const pi = createPi({ hostname, ipManagement, ipRing, sshPort, sshUser });
+  if (checkDuplicateName(name)) {
+    return res.status(409).json({ error: '이미 등록된 이름입니다' });
+  }
+  if (checkDuplicateIp(ip)) {
+    return res.status(409).json({ error: '이미 등록된 IP 주소입니다' });
+  }
+
+  const pi = createPi({ name, ip, sshPort, sshUser, authMethod, sshPassword });
   res.status(201).json(pi);
 });
 

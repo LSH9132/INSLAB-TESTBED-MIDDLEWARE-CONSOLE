@@ -8,6 +8,7 @@ export function useTerminal(containerRef: React.RefObject<HTMLDivElement | null>
   const [status, setStatus] = useState<TerminalStatus>('connecting');
 
   useEffect(() => {
+    // 브라우저에서만 실행
     if (typeof window === 'undefined' || !containerRef.current) return;
 
     // XTerm.js는 브라우저에서만 동적 로드
@@ -25,50 +26,60 @@ export function useTerminal(containerRef: React.RefObject<HTMLDivElement | null>
         fit.fit();
         termRef.current = term;
 
+        // WebSocket 연결 - 클라이언트에서만 실행
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal/${piId}`);
-        ws.binaryType = 'arraybuffer';
+        const centralServerUrl = process.env.NEXT_PUBLIC_CENTRAL_SERVER_URL || 'http://localhost:3001';
 
-        ws.onopen = () => {
-          setStatus('connected');
-          term.focus();
-        };
+        try {
+          const url = new URL(centralServerUrl);
+          const wsUrl = `${protocol}//${url.host}/ws/terminal/${piId}`;
+          const ws = new WebSocket(wsUrl);
+          ws.binaryType = 'arraybuffer';
 
-        ws.onmessage = (e) => {
-          if (e.data instanceof ArrayBuffer) {
-            term.write(new Uint8Array(e.data));
-          } else if (typeof e.data === 'string') {
-            // SSH에서 텍스트 메시지 (예: 연결 메시지) 수신
-            term.write(e.data);
-          }
-        };
+          ws.onopen = () => {
+            setStatus('connected');
+            term.focus();
+          };
 
-        ws.onerror = () => {
+          ws.onmessage = (e) => {
+            if (e.data instanceof ArrayBuffer) {
+              term.write(new Uint8Array(e.data));
+            } else if (typeof e.data === 'string') {
+              term.write(e.data);
+            }
+          };
+
+          ws.onerror = () => {
+            setStatus('error');
+            term.write('\r\n\x1b[31mConnection error\x1b[0m\r\n');
+          };
+
+          ws.onclose = () => {
+            setStatus('disconnected');
+            term.write('\r\n\x1b[33mConnection closed\x1b[0m\r\n');
+          };
+
+          term.onData((data: string) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(data);
+            }
+          });
+
+          term.onResize(({ cols, rows }: { cols: number; rows: number }) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+            }
+          });
+
+          const resizeObserver = new ResizeObserver(() => fit.fit());
+          resizeObserver.observe(containerRef.current!);
+
+          termRef.current = { term, ws, resizeObserver };
+        } catch (err) {
+          console.error('WebSocket URL error:', err);
           setStatus('error');
-          term.write('\r\n\x1b[31mConnection error\x1b[0m\r\n');
-        };
-
-        ws.onclose = () => {
-          setStatus('disconnected');
-          term.write('\r\n\x1b[33mConnection closed\x1b[0m\r\n');
-        };
-
-        term.onData((data: string) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(data);
-          }
-        });
-
-        term.onResize(({ cols, rows }: { cols: number; rows: number }) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'resize', cols, rows }));
-          }
-        });
-
-        const resizeObserver = new ResizeObserver(() => fit.fit());
-        resizeObserver.observe(containerRef.current!);
-
-        termRef.current = { term, ws, resizeObserver };
+          term.write('\r\n\x1b[31mConfiguration error\x1b[0m\r\n');
+        }
       });
     });
 

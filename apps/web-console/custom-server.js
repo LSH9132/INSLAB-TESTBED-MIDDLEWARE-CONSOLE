@@ -71,10 +71,12 @@ const server = http.createServer(async (req, res) => {
 
   // Serve static files manually
   if (url.startsWith('/_next/static/')) {
-    const relativePath = url.replace('/_next/static/', '');
+    // URL 인코딩 디코딩: %5BpiId%5D → [piId] 처럼 실제 파일명에 맞게 변환
+    const relativePath = decodeURIComponent(url.replace('/_next/static/', '').split('?')[0]);
     const filePath = path.join(dir, '.next/static', relativePath);
     if (serveStatic(req, res, filePath)) return;
   }
+
 
   // Serve public files
   if (url === '/favicon.ico' || url.startsWith('/images/')) {
