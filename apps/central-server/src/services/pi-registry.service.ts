@@ -41,6 +41,46 @@ export function createPi(req: PiCreateRequest): PiNode {
   return getPiById(id)!;
 }
 
+export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | undefined {
+  const existing = getPiById(id);
+  if (!existing) return undefined;
+
+  const updates: string[] = [];
+  const params: any[] = [];
+
+  if (req.name !== undefined) {
+    updates.push('name = ?');
+    params.push(req.name);
+  }
+  if (req.ip !== undefined) {
+    updates.push('ip = ?');
+    params.push(req.ip);
+  }
+  if (req.sshPort !== undefined) {
+    updates.push('ssh_port = ?');
+    params.push(req.sshPort);
+  }
+  if (req.sshUser !== undefined) {
+    updates.push('ssh_user = ?');
+    params.push(req.sshUser);
+  }
+  if (req.authMethod !== undefined) {
+    updates.push('auth_method = ?');
+    params.push(req.authMethod);
+  }
+  if (req.sshPassword !== undefined) {
+    updates.push('ssh_password = ?');
+    params.push(req.sshPassword);
+  }
+
+  if (updates.length > 0) {
+    params.push(id);
+    getDb().prepare(`UPDATE pi_nodes SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  return getPiById(id);
+}
+
 export function deletePi(id: string): boolean {
   const result = getDb().prepare('DELETE FROM pi_nodes WHERE id = ?').run(id);
   return result.changes > 0;
