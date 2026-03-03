@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useEffect, useState } from 'react';
 import { useTerminal } from '@/hooks/useTerminal';
+import '@xterm/xterm/css/xterm.css';
 
 export function XTerminal({ piId }: { piId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,15 +14,15 @@ export function XTerminal({ piId }: { piId: string }) {
 
   if (!isClient) {
     return (
-      <div className="relative w-full h-full min-h-[500px] bg-[#0a0a0a]">
-        <div ref={containerRef} className="w-full h-full" />
+      <div className="relative w-full h-full bg-[#0a0a0a] overflow-hidden">
+        <div ref={containerRef} className="w-full h-full overflow-hidden" />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full min-h-[500px] bg-[#0a0a0a]">
-      <div ref={containerRef} className="w-full h-full" />
+    <div className="relative w-full h-full bg-[#0a0a0a] overflow-hidden">
+      <div ref={containerRef} className="w-full h-full overflow-hidden" />
 
       {status === 'connecting' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
