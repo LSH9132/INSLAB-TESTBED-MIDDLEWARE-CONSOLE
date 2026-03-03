@@ -17,6 +17,7 @@ interface FormState {
   sshPort: string;
   authMethod: PiAuthMethod;
   sshPassword: string;
+  sshPrivateKey: string;
 }
 
 const defaultForm: FormState = {
@@ -26,6 +27,7 @@ const defaultForm: FormState = {
   sshPort: '22',
   authMethod: 'key',
   sshPassword: '',
+  sshPrivateKey: '',
 };
 
 type ValidationErrors = Partial<Record<keyof FormState, string>>;
@@ -73,6 +75,10 @@ export default function PiManagementPage() {
       errors.sshPassword = '비밀번호를 입력해주세요';
     }
 
+    if (form.authMethod === 'key' && !form.sshPrivateKey.trim()) {
+      errors.sshPrivateKey = 'SSH 개인키를 입력해주세요';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -92,6 +98,7 @@ export default function PiManagementPage() {
           sshPort: Number(form.sshPort),
           authMethod: form.authMethod,
           sshPassword: form.authMethod === 'password' ? form.sshPassword : undefined,
+          sshPrivateKey: form.authMethod === 'key' ? form.sshPrivateKey : undefined,
         }),
       });
       setForm(defaultForm);
@@ -184,11 +191,11 @@ export default function PiManagementPage() {
             </div>
 
             {/* 인증 방식 */}
-            <div>
+            <div className={form.authMethod === 'key' ? '' : 'md:col-span-1'}>
               <label className={labelClass}>인증 방식 <span className="text-[#F04452]">*</span></label>
               <select
                 value={form.authMethod}
-                onChange={(e) => setForm({ ...form, authMethod: e.target.value as PiAuthMethod, sshPassword: '' })}
+                onChange={(e) => setForm({ ...form, authMethod: e.target.value as PiAuthMethod, sshPassword: '', sshPrivateKey: '' })}
                 className={inputClass(false)}
               >
                 <option value="key">SSH 키 (권장)</option>
@@ -212,11 +219,21 @@ export default function PiManagementPage() {
             )}
           </div>
 
-          {/* SSH 키 안내 */}
+          {/* SSH 개인키 (key 인증 시만 표시) */}
           {form.authMethod === 'key' && (
-            <div className="p-4 bg-[#F0F6FF] dark:bg-blue-900/20 border border-[#3182F6]/30 rounded-xl">
-              <p className="text-[13px] text-[#3182F6] dark:text-blue-400 font-medium">
-                🔑 SSH 키 인증을 사용합니다. central-server의 SSH 공개 키가 Pi의 <code className="bg-[#3182F6]/10 px-1 rounded">~/.ssh/authorized_keys</code>에 등록되어 있어야 합니다.
+            <div>
+              <label className={labelClass}>SSH 개인키 <span className="text-[#F04452]">*</span></label>
+              <textarea
+                rows={6}
+                placeholder={"-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----"}
+                value={form.sshPrivateKey}
+                onChange={(e) => setForm({ ...form, sshPrivateKey: e.target.value })}
+                className={`${inputClass(!!validationErrors.sshPrivateKey)} font-mono text-[13px] resize-y`}
+                spellCheck={false}
+              />
+              {validationErrors.sshPrivateKey && <p className={errorClass}>{validationErrors.sshPrivateKey}</p>}
+              <p className="text-[12px] text-[#8B95A1] dark:text-gray-500 mt-2">
+                Pi에 접속할 때 사용할 SSH 개인키(PEM 형식)를 붙여넣으세요. 개인키는 서버 DB에 저장됩니다.
               </p>
             </div>
           )}
@@ -273,12 +290,22 @@ export default function PiManagementPage() {
                       {pi.sshUser}@{pi.ip}:{pi.sshPort}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border ${pi.authMethod === 'key'
-                          ? 'bg-[#F0F6FF] text-[#3182F6] border-[#3182F6]/30 dark:bg-blue-900/20 dark:text-blue-400'
-                          : 'bg-[#FFF7E6] text-[#F5A623] border-[#F5A623]/30 dark:bg-yellow-900/20 dark:text-yellow-400'
-                        }`}>
-                        {pi.authMethod === 'key' ? '🔑 키' : '🔒 비밀번호'}
-                      </span>
+                      {pi.authMethod === 'key' ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border bg-[#F0F6FF] text-[#3182F6] border-[#3182F6]/30 dark:bg-blue-900/20 dark:text-blue-400 w-fit">
+                            🔑 SSH 키
+                          </span>
+                          {pi.sshPrivateKey ? (
+                            <span className="text-[11px] text-[#0BC27C] dark:text-green-400">✓ 개인키 등록됨</span>
+                          ) : (
+                            <span className="text-[11px] text-[#F04452] dark:text-red-400">⚠ 개인키 없음</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border bg-[#FFF7E6] text-[#F5A623] border-[#F5A623]/30 dark:bg-yellow-900/20 dark:text-yellow-400">
+                          🔒 비밀번호
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">{getStatusBadge(pi.status)}</td>
                     <td className="px-6 py-4">

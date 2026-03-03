@@ -11,5 +11,5 @@ export function handleTerminalConnection(ws: WebSocket, piId: string) {
   }
 
   ws.send(`\r\nConnecting to ${pi.name} (${pi.ip})...\r\n`);
-  attachTerminal(ws, pi.ip, pi.sshPort, pi.sshUser, pi.authMethod, (pi as any).sshPassword);
+  attachTerminal(ws, pi.ip, pi.sshPort, pi.sshUser, pi.authMethod, (pi as any).sshPassword, pi.sshPrivateKey);
 }
