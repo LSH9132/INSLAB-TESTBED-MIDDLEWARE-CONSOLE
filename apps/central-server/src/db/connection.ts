@@ -38,4 +38,14 @@ function runMigrations(db: Database.Database) {
   // 003: 토폴로지 링크 테이블 추가 (IF NOT EXISTS 이므로 항상 실행)
   const sql003 = readFileSync(resolve(__dirname, 'migrations/003_topology.sql'), 'utf-8');
   db.exec(sql003);
+
+  // 004: ssh_private_key 컬럼 추가 (이미 존재하면 무시)
+  const hasSshPrivateKeyColumn = db.prepare(
+    "SELECT 1 FROM pragma_table_info('pi_nodes') WHERE name = 'ssh_private_key'"
+  ).get() !== undefined;
+
+  if (!hasSshPrivateKeyColumn) {
+    const sql004 = readFileSync(resolve(__dirname, 'migrations/004_add_ssh_private_key.sql'), 'utf-8');
+    db.exec(sql004);
+  }
 }

@@ -14,7 +14,7 @@ piRouter.get('/:id', (req, res) => {
 });
 
 piRouter.post('/', (req, res) => {
-  const { name, ip, sshPort, sshUser, authMethod, sshPassword } = req.body;
+  const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey } = req.body;
 
   if (!name || !ip) {
     return res.status(400).json({ error: 'name, ip required' });
@@ -24,6 +24,10 @@ piRouter.post('/', (req, res) => {
     return res.status(400).json({ error: 'sshPassword is required for password authentication' });
   }
 
+  if (authMethod === 'key' && !sshPrivateKey?.trim()) {
+    return res.status(400).json({ error: 'SSH 개인키를 입력해주세요' });
+  }
+
   if (checkDuplicateName(name)) {
     return res.status(409).json({ error: '이미 등록된 이름입니다' });
   }
@@ -31,13 +35,13 @@ piRouter.post('/', (req, res) => {
     return res.status(409).json({ error: '이미 등록된 IP 주소입니다' });
   }
 
-  const pi = createPi({ name, ip, sshPort, sshUser, authMethod, sshPassword });
+  const pi = createPi({ name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey });
   res.status(201).json(pi);
 });
 
 piRouter.put('/:id', (req, res) => {
   const { id } = req.params;
-  const { name, ip, sshPort, sshUser, authMethod, sshPassword } = req.body;
+  const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey } = req.body;
 
   const existingPi = getPiById(id);
   if (!existingPi) return res.status(404).json({ error: 'Not found' });
@@ -50,8 +54,6 @@ piRouter.put('/:id', (req, res) => {
   }
 
   if (authMethod === 'password' && !sshPassword) {
-    // We optionally require password here if auth method changes to password, but it might be reused.
-    // For simplicity, let's just make sure it's valid if they transmit an empty one.
     if (existingPi.authMethod !== 'password' || req.body.hasOwnProperty('sshPassword')) {
       if (!sshPassword) {
          return res.status(400).json({ error: 'sshPassword is required for password authentication' });
@@ -59,7 +61,7 @@ piRouter.put('/:id', (req, res) => {
     }
   }
 
-  const updatedPi = updatePi(id, { name, ip, sshPort, sshUser, authMethod, sshPassword });
+  const updatedPi = updatePi(id, { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey });
   res.json(updatedPi);
 });
 
