@@ -34,4 +34,8 @@ function runMigrations(db: Database.Database) {
     const sql002 = readFileSync(resolve(__dirname, 'migrations/002_refactor_pi.sql'), 'utf-8');
     db.exec(sql002);
   }
+
+  // 003: 토폴로지 링크 테이블 추가 (IF NOT EXISTS 이므로 항상 실행)
+  const sql003 = readFileSync(resolve(__dirname, 'migrations/003_topology.sql'), 'utf-8');
+  db.exec(sql003);
 }
