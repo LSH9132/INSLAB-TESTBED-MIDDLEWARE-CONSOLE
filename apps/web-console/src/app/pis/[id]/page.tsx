@@ -18,6 +18,7 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
   const [editSshPort, setEditSshPort] = useState<number>(22);
   const [editAuthMethod, setEditAuthMethod] = useState<PiAuthMethod>('key');
   const [editSshPassword, setEditSshPassword] = useState('');
+  const [editSshPrivateKey, setEditSshPrivateKey] = useState('');
   const [errorDetails, setErrorDetails] = useState('');
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
     setEditSshPort(data.sshPort);
     setEditAuthMethod(data.authMethod);
     setEditSshPassword('');
+    setEditSshPrivateKey(''); // 보안상 기존 개인키는 폼에 채우지 않음
     setErrorDetails('');
   };
 
@@ -64,13 +66,13 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
         authMethod: editAuthMethod,
       };
 
-      if (editAuthMethod === 'password') {
-        if (!editSshPassword) {
-          // If no new password is provided, we omit it from payload so it uses the existing one (if the backend supports that)
-          // Actually, our backend route requires sshPassword if authMethod is password UNLESS it's already password. Let's send it if typed.
-        } else {
-           payload.sshPassword = editSshPassword;
-        }
+      if (editAuthMethod === 'password' && editSshPassword) {
+        payload.sshPassword = editSshPassword;
+      }
+
+      // 개인키를 입력한 경우에만 업데이트
+      if (editAuthMethod === 'key' && editSshPrivateKey.trim()) {
+        payload.sshPrivateKey = editSshPrivateKey;
       }
 
       await apiFetch(`/api/pis/${id}`, {
@@ -183,9 +185,16 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
               <option value="password">🔒 비밀번호</option>
             </select>
           ) : (
-            <span className={`text-[14px] font-semibold ${pi.authMethod === 'key' ? 'text-[#3182F6]' : 'text-[#F5A623]'}`}>
-              {pi.authMethod === 'key' ? '🔑 SSH 키' : '🔒 비밀번호'}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span className={`text-[14px] font-semibold ${pi.authMethod === 'key' ? 'text-[#3182F6]' : 'text-[#F5A623]'}`}>
+                {pi.authMethod === 'key' ? '🔑 SSH 키' : '🔒 비밀번호'}
+              </span>
+              {pi.authMethod === 'key' && (
+                pi.sshPrivateKey
+                  ? <span className="text-[12px] text-[#0BC27C]">✓ 개인키 등록됨</span>
+                  : <span className="text-[12px] text-[#F04452]">⚠ 개인키 없음</span>
+              )}
+            </div>
           )}
         </div>
 
@@ -199,6 +208,21 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
               placeholder="변경할 때만 입력"
               className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-[#E5E8EB] dark:border-gray-600 rounded-lg text-[14px] text-[#191F28] dark:text-gray-100 outline-none focus:border-[#3182F6] dark:focus:border-blue-500 transition-colors"
             />
+          </div>
+        )}
+
+        {isEditing && editAuthMethod === 'key' && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[#8B95A1] dark:text-gray-500 text-[14px] font-medium">SSH 개인키</span>
+            <textarea
+              rows={5}
+              value={editSshPrivateKey}
+              onChange={(e) => setEditSshPrivateKey(e.target.value)}
+              placeholder={"-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----\n(비워두면 기존 키 유지)"}
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-[#E5E8EB] dark:border-gray-600 rounded-lg text-[13px] text-[#191F28] dark:text-gray-100 outline-none focus:border-[#3182F6] dark:focus:border-blue-500 transition-colors font-mono resize-y"
+              spellCheck={false}
+            />
+            <p className="text-[11px] text-[#8B95A1] dark:text-gray-500">비워두면 기존 개인키가 유지됩니다.</p>
           </div>
         )}
 

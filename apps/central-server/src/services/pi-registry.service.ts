@@ -26,8 +26,8 @@ export function createPi(req: PiCreateRequest): PiNode {
   const id = uuid();
 
   getDb().prepare(`
-    INSERT INTO pi_nodes (id, name, ip, ssh_port, ssh_user, auth_method, ssh_password)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO pi_nodes (id, name, ip, ssh_port, ssh_user, auth_method, ssh_password, ssh_private_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     req.name,
@@ -36,6 +36,7 @@ export function createPi(req: PiCreateRequest): PiNode {
     req.sshUser ?? 'pi',
     req.authMethod ?? 'key',
     req.sshPassword ?? null,
+    req.sshPrivateKey ?? null,
   );
 
   return getPiById(id)!;
@@ -72,6 +73,10 @@ export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | un
     updates.push('ssh_password = ?');
     params.push(req.sshPassword);
   }
+  if (req.sshPrivateKey !== undefined) {
+    updates.push('ssh_private_key = ?');
+    params.push(req.sshPrivateKey);
+  }
 
   if (updates.length > 0) {
     params.push(id);
@@ -98,6 +103,7 @@ function rowToPiNode(row: any): PiNode {
     sshPort: row.ssh_port,
     sshUser: row.ssh_user,
     authMethod: (row.auth_method ?? 'key') as PiAuthMethod,
+    sshPrivateKey: row.ssh_private_key ?? null,
     status: row.status,
     lastSeen: row.last_seen,
     createdAt: row.created_at,
