@@ -8,6 +8,7 @@ export interface PiNode {
   sshPort: number;
   sshUser: string;
   authMethod: PiAuthMethod;
+  sshPrivateKey?: string | null;
   status: PiStatus;
   lastSeen: number | null;
   createdAt: number;
@@ -20,4 +21,5 @@ export interface PiCreateRequest {
   sshUser?: string;
   authMethod?: PiAuthMethod;
   sshPassword?: string;
+  sshPrivateKey?: string;
 }

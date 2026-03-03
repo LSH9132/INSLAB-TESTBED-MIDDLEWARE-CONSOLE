@@ -26,8 +26,8 @@ export function createPi(req: PiCreateRequest): PiNode {
   const id = uuid();
 
   getDb().prepare(`
-    INSERT INTO pi_nodes (id, name, ip, ssh_port, ssh_user, auth_method, ssh_password)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO pi_nodes (id, name, ip, ssh_port, ssh_user, auth_method, ssh_password, ssh_private_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     req.name,
@@ -36,9 +36,54 @@ export function createPi(req: PiCreateRequest): PiNode {
     req.sshUser ?? 'pi',
     req.authMethod ?? 'key',
     req.sshPassword ?? null,
+    req.sshPrivateKey ?? null,
   );
 
   return getPiById(id)!;
+}
+
+export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | undefined {
+  const existing = getPiById(id);
+  if (!existing) return undefined;
+
+  const updates: string[] = [];
+  const params: any[] = [];
+
+  if (req.name !== undefined) {
+    updates.push('name = ?');
+    params.push(req.name);
+  }
+  if (req.ip !== undefined) {
+    updates.push('ip = ?');
+    params.push(req.ip);
+  }
+  if (req.sshPort !== undefined) {
+    updates.push('ssh_port = ?');
+    params.push(req.sshPort);
+  }
+  if (req.sshUser !== undefined) {
+    updates.push('ssh_user = ?');
+    params.push(req.sshUser);
+  }
+  if (req.authMethod !== undefined) {
+    updates.push('auth_method = ?');
+    params.push(req.authMethod);
+  }
+  if (req.sshPassword !== undefined) {
+    updates.push('ssh_password = ?');
+    params.push(req.sshPassword);
+  }
+  if (req.sshPrivateKey !== undefined) {
+    updates.push('ssh_private_key = ?');
+    params.push(req.sshPrivateKey);
+  }
+
+  if (updates.length > 0) {
+    params.push(id);
+    getDb().prepare(`UPDATE pi_nodes SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  return getPiById(id);
 }
 
 export function deletePi(id: string): boolean {
@@ -58,6 +103,7 @@ function rowToPiNode(row: any): PiNode {
     sshPort: row.ssh_port,
     sshUser: row.ssh_user,
     authMethod: (row.auth_method ?? 'key') as PiAuthMethod,
+    sshPrivateKey: row.ssh_private_key ?? null,
     status: row.status,
     lastSeen: row.last_seen,
     createdAt: row.created_at,
