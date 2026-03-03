@@ -56,18 +56,23 @@ export function attachTerminal(
     ws.close();
   });
 
-  const connectOptions: any = {
-    host,
-    port,
-    username,
-  };
+  try {
+    const connectOptions: any = {
+      host,
+      port,
+      username,
+    };
 
-  if (authMethod === 'password' && sshPassword) {
-    connectOptions.password = sshPassword;
-  } else {
-    const keyPath = config.sshPrivateKeyPath.replace('~', process.env.HOME || '');
-    connectOptions.privateKey = readFileSync(keyPath);
+    if (authMethod === 'password' && sshPassword) {
+      connectOptions.password = sshPassword;
+    } else {
+      const keyPath = config.sshPrivateKeyPath.replace('~', process.env.HOME || '');
+      connectOptions.privateKey = readFileSync(keyPath);
+    }
+
+    ssh.connect(connectOptions);
+  } catch (err: any) {
+    ws.send(`\r\nFailed to start SSH connection: ${err.message}\r\n`);
+    ws.close();
   }
-
-  ssh.connect(connectOptions);
 }
