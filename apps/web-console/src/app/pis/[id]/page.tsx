@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import type { PiNode } from '@inslab/shared';
 
-export default function PiDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function PiDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [pi, setPi] = useState<PiNode | null>(null);
 
   useEffect(() => {
