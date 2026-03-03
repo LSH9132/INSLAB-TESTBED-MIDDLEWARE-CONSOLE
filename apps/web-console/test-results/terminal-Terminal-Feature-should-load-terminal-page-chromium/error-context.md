@@ -1,0 +1,77 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - heading "404" [level=1] [ref=e4]
+    - heading "This page could not be found." [level=2] [ref=e6]
+  - generic [active]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - navigation [ref=e12]:
+            - button "previous" [disabled] [ref=e13]:
+              - img "previous" [ref=e14]
+            - generic [ref=e16]:
+              - generic [ref=e17]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e18]:
+              - img "next" [ref=e19]
+          - img
+        - generic [ref=e21]:
+          - link "Next.js 16.0.1 (stale) Turbopack" [ref=e22] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e23]
+            - generic "There is a newer version (16.1.6) available, upgrade recommended!" [ref=e25]: Next.js 16.0.1 (stale)
+            - generic [ref=e26]: Turbopack
+          - img
+      - dialog "Build Error" [ref=e28]:
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - generic [ref=e35]: Build Error
+              - generic [ref=e36]:
+                - button "Copy Error Info" [ref=e37] [cursor=pointer]:
+                  - img [ref=e38]
+                - button "No related documentation found" [disabled] [ref=e40]:
+                  - img [ref=e41]
+                - link "Learn more about enabling Node.js inspector for server code with Chrome DevTools" [ref=e43] [cursor=pointer]:
+                  - /url: https://nextjs.org/docs/app/building-your-application/configuring/debugging#server-side-code
+                  - img [ref=e44]
+            - generic [ref=e53]: Parsing ecmascript source code failed
+          - generic [ref=e55]:
+            - generic [ref=e57]:
+              - img [ref=e59]
+              - generic [ref=e62]: ./INSLAB-Web-1/src/components/Navbar/Navbar.tsx (11:1)
+              - button "Open in editor" [ref=e63] [cursor=pointer]:
+                - img [ref=e65]
+            - generic [ref=e68]:
+              - generic [ref=e69]: Parsing ecmascript source code failed
+              - generic [ref=e70]: 9 |
+              - text: =======
+              - generic [ref=e71]: 10 |
+              - text: import
+              - generic [ref=e72]: inslabNewLogo
+              - text: from "./asset/INSLAB-LOGO-N.png" >
+              - generic [ref=e73]: 11 |
+              - text: ">>>>>>>"
+              - generic [ref=e74]: development
+              - generic [ref=e75]: "|"
+              - text: ^^^^^^^
+              - generic [ref=e76]: 12 |
+              - generic [ref=e77]: // import inslabBanner from "./asset/INSLAB-Banner.png";
+              - generic [ref=e78]: 13 |
+              - generic [ref=e79]: 14 |
+              - generic [ref=e80]: "Merge conflict marker encountered. Import trace: Server Component: ./INSLAB-Web-1/src/components/Navbar/Navbar.tsx ./INSLAB-Web-1/src/app/page.tsx"
+        - generic [ref=e81]: "1"
+        - generic [ref=e82]: "2"
+    - generic [ref=e87] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e88]:
+        - img [ref=e89]
+      - button "Open issues overlay" [ref=e93]:
+        - generic [ref=e94]:
+          - generic [ref=e95]: "0"
+          - generic [ref=e96]: "1"
+        - generic [ref=e97]: Issue
+  - alert [ref=e98]
+```

@@ -103,6 +103,7 @@ function rowToPiNode(row: any): PiNode {
     sshPort: row.ssh_port,
     sshUser: row.ssh_user,
     authMethod: (row.auth_method ?? 'key') as PiAuthMethod,
+    sshPassword: row.ssh_password ?? null,
     sshPrivateKey: row.ssh_private_key ?? null,
     status: row.status,
     lastSeen: row.last_seen,
