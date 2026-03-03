@@ -2,6 +2,25 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { TopologyGraph, TopologyNode, TopologyLink } from '@inslab/shared';
 
+// ─── 쿠키 유틸리티 ────────────────────────────────────
+function setCookie(name: string, value: string, days: number = 30) {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = "expires=" + date.toUTCString();
+  document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
+}
+
+function getCookie(name: string): string | null {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+  }
+  return null;
+}
+
 // ─── 타입 ──────────────────────────────────────────
 interface NodePos {
   x: number;
@@ -67,8 +86,17 @@ function computeLayout(nodes: TopologyNode[], links: TopologyLink[], w: number, 
         const dy = b.y - a.y;
         const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
         const force = REPULSION / (dist * dist);
-        const fx = (dx / dist) * force;
-        const fy = (dy / dist) * force;
+        let fx = (dx / dist) * force;
+        let fy = (dy / dist) * force;
+
+        // 추가 겹침 방지 (Collision) 강하게 튕기게 설정
+        const minDist = NODE_R * 2 + 50; // 노드 간 최소 거리 확보
+        if (dist < minDist) {
+          const overlapForce = (minDist - dist) * 1.5;
+          fx += (dx / dist) * overlapForce;
+          fy += (dy / dist) * overlapForce;
+        }
+
         a.vx -= fx; a.vy -= fy;
         b.vx += fx; b.vy += fy;
       }
@@ -121,12 +149,44 @@ export function TopologyGraph({ graph, scanning, onScan }: Props) {
   const posRef = useRef(positions);
   posRef.current = positions;
 
-  // 레이아웃 계산 (노드/링크 변경 시)
+  // 레이아웃 초기화 및 저장된 위치(쿠키) 불러오기
   useEffect(() => {
     if (graph.nodes.length === 0) return;
+    
+    const saved = getCookie('topology_layout');
+    let loadedMap: Map<string, { x: number; y: number }> | null = null;
+    
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const map = new Map<string, { x: number; y: number }>(parsed);
+        // 저장된 위치 정보에 모든 노드가 포함되어 있는지 확인
+        const hasAllNodes = graph.nodes.every(n => map.has(n.name));
+        if (hasAllNodes) {
+          loadedMap = map;
+        }
+      } catch (e) {
+        console.error('Failed to parse cookie for topology layout', e);
+      }
+    }
+
+    if (loadedMap) {
+      setPositions(loadedMap);
+    } else {
+      const layout = computeLayout(graph.nodes, graph.links, W, H);
+      setPositions(layout);
+      setCookie('topology_layout', JSON.stringify(Array.from(layout.entries())));
+    }
+  }, [graph.nodes.length, graph.links.length]);
+
+  // 위치 다시 정렬하기
+  const resetLayout = () => {
     const layout = computeLayout(graph.nodes, graph.links, W, H);
     setPositions(layout);
-  }, [graph.nodes.length, graph.links.length]);
+    setCookie('topology_layout', JSON.stringify(Array.from(layout.entries())));
+    setPan({ x: 0, y: 0 });
+    setZoom(1);
+  };
 
   const getNodeByName = useCallback((name: string) =>
     graph.nodes.find(n => n.name === name), [graph.nodes]);
@@ -168,7 +228,14 @@ export function TopologyGraph({ graph, scanning, onScan }: Props) {
     }
   };
 
-  const onSvgMouseUp = () => { setDragging(null); setIsPanning(false); };
+  const onSvgMouseUp = () => { 
+    if (dragging) {
+      // 드래그가 끝났을 때 쿠키에 위치를 저장
+      setCookie('topology_layout', JSON.stringify(Array.from(posRef.current.entries())));
+    }
+    setDragging(null); 
+    setIsPanning(false); 
+  };
 
   const onSvgMouseDown = (e: React.MouseEvent) => {
     if (e.target === svgRef.current || (e.target as SVGElement).tagName === 'rect') {
@@ -207,29 +274,41 @@ export function TopologyGraph({ graph, scanning, onScan }: Props) {
               </span>
             )}
           </div>
-          <button
-            onClick={onScan}
-            disabled={scanning}
-            className="pointer-events-auto flex items-center gap-1.5 bg-[#3182F6] hover:bg-[#1B64DA] disabled:bg-[#B0B8C1] text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-all"
-            style={{ boxShadow: '0 1px 6px rgba(49,130,246,0.3)' }}
-          >
-            {scanning ? (
-              <>
-                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                스캔 중...
-              </>
-            ) : (
-              <>
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                SSH 스캔
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={resetLayout}
+              className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-[#E5E8EB] dark:border-gray-700 hover:bg-[#F9FAFB] dark:hover:bg-gray-700 text-[#4E5968] dark:text-gray-300 text-[13px] font-semibold px-4 py-2 rounded-xl transition-all"
+              style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              다시 정렬하기
+            </button>
+            <button
+              onClick={onScan}
+              disabled={scanning}
+              className="flex items-center gap-1.5 bg-[#3182F6] hover:bg-[#1B64DA] disabled:bg-[#B0B8C1] text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-all"
+              style={{ boxShadow: '0 1px 6px rgba(49,130,246,0.3)' }}
+            >
+              {scanning ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  스캔 중...
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  SSH 스캔
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* 범례 */}
