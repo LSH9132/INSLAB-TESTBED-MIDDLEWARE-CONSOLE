@@ -9,6 +9,7 @@ import { logRouter } from './routes/log.routes.js';
 import { systemRouter } from './routes/system.routes.js';
 import { setupWebSocket } from './ws/index.js';
 import { startMonitor } from './services/pi-monitor.service.js';
+import { seedStaticTopology } from './services/topology.service.js';
 
 const app = express();
 app.use(cors());
@@ -23,6 +24,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Initialize DB
 getDb();
+seedStaticTopology();
 
 const server = createServer(app);
 setupWebSocket(server);
