@@ -117,11 +117,11 @@ export default function PiManagementPage() {
 
   const getStatusBadge = (status: string) => {
     const styles = status === 'online'
-      ? 'bg-[#E7F4EF] text-[#0BC27C] border-[#0BC27C]'
+      ? 'bg-[#E7F4EF] text-[#0BC27C] border-[#0BC27C] dark:bg-green-900/20 dark:text-green-400 dark:border-green-400/30'
       : status === 'offline'
-        ? 'bg-[#FEF1F2] text-[#F04452] border-[#F04452]'
-        : 'bg-[#F2F4F6] text-[#8B95A1] border-[#D1D6DB]';
-    const dotColor = status === 'online' ? 'bg-[#0BC27C]' : status === 'offline' ? 'bg-[#F04452]' : 'bg-[#8B95A1]';
+        ? 'bg-[#FEF1F2] text-[#F04452] border-[#F04452] dark:bg-red-900/20 dark:text-red-400 dark:border-red-400/30'
+        : 'bg-[#F2F4F6] text-[#8B95A1] border-[#D1D6DB] dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
+    const dotColor = status === 'online' ? 'bg-[#0BC27C] dark:bg-green-400' : status === 'offline' ? 'bg-[#F04452] dark:bg-red-400' : 'bg-[#8B95A1] dark:bg-gray-500';
     const label = status === 'online' ? '온라인' : status === 'offline' ? '오프라인' : '알 수 없음';
     return (
       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium border ${styles}`}>
