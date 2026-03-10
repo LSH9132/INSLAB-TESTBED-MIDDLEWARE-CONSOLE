@@ -1,7 +1,7 @@
 export const CENTRAL_SERVER_PORT = 3001;
 export const WEB_CONSOLE_PORT = 3000;
 export const LOG_SERVER_TCP_PORT = 5140;
-export const LOG_SERVER_HTTP_PORT = 3002;
+export const LOG_SERVER_HTTP_PORT = 3033;
 
 export const WS_PATH_TERMINAL = '/ws/terminal';
 export const WS_PATH_STATUS = '/ws/status';
