@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { WS_PATH_NET_STATS, type NetworkInterfaceStat, type NetworkStatSnapshot } from '@inslab/shared';
+import type { NetworkInterfaceStat, NetworkStatSnapshot } from '@inslab/shared';
 import { apiFetch } from '@/lib/api';
-import { resolveWebSocketUrl } from '@/lib/urls';
 
 interface UseNetStatsOptions {
   piId: string;
@@ -19,7 +18,7 @@ export function useNetStats({ piId, historyLimit = 60 }: UseNetStatsOptions) {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadInitialState() {
+    const load = async () => {
       setLoading(true);
       setError(null);
 
@@ -30,7 +29,7 @@ export function useNetStats({ piId, historyLimit = 60 }: UseNetStatsOptions) {
         setLatest(snap);
 
         const historyEntries = await Promise.all(
-          snap.interfaces.map(async (iface: NetworkInterfaceStat) => {
+          snap.interfaces.map(async iface => {
             const points = await apiFetch<NetworkInterfaceStat[]>(
               `/api/net-stats/${piId}/history?iface=${encodeURIComponent(iface.iface)}&limit=${historyLimit}`,
             );
@@ -40,53 +39,22 @@ export function useNetStats({ piId, historyLimit = 60 }: UseNetStatsOptions) {
 
         if (cancelled) return;
         setHistory(Object.fromEntries(historyEntries));
-      } catch (e) {
-        if (!cancelled) setError(String(e));
+        setError(null);
+      } catch (err) {
+        if (!cancelled) setError(String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
+    };
 
-    loadInitialState();
+    load();
+    const timer = window.setInterval(load, 5000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
-  }, [piId, historyLimit]);
-
-  useEffect(() => {
-    let ws: WebSocket;
-
-    try {
-      ws = new WebSocket(resolveWebSocketUrl(WS_PATH_NET_STATS));
-    } catch (e) {
-      setError(String(e));
-      return;
-    }
-
-    ws.onmessage = (evt) => {
-      try {
-        const msg = JSON.parse(evt.data);
-        if (msg.type !== 'net-stats') return;
-        const snap = msg.data as NetworkStatSnapshot;
-        if (snap.piId !== piId) return;
-
-        setLatest(snap);
-        setHistory(prev => {
-          const next = { ...prev };
-          for (const stat of snap.interfaces) {
-            const arr = next[stat.iface] ?? [];
-            const trimmed = arr.length >= historyLimit ? arr.slice(-(historyLimit - 1)) : arr;
-            next[stat.iface] = [...trimmed, stat];
-          }
-          return next;
-        });
-      } catch { /* ignore */ }
-    };
-
-    ws.onerror = () => setError('WebSocket error');
-    return () => ws.close();
-  }, [piId, historyLimit]);
+  }, [historyLimit, piId]);
 
   return { latest, history, loading, error };
 }
