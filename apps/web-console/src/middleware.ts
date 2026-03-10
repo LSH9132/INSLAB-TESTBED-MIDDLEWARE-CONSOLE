@@ -4,14 +4,18 @@ const AUTH_COOKIE_NAME = 'auth_token';
 
 // API 프록시 및 인증 미들웨어
 export function middleware(req: NextRequest) {
-  const url = req.url;
   const path = req.nextUrl.pathname;
+  console.log('[MIDDLEWARE] Executing for path:', path);
 
   // 인증이 필요 없는 경로
-  const isPublicPath = path === '/login' || path.startsWith('/_next/') || path.includes('.');
+  const isPublicPath =
+    path === '/login' ||
+    path.startsWith('/_next/') ||
+    path.startsWith('/favicon');
 
   // 인증 토큰 확인
-  const isAuthenticated = req.cookies.has(AUTH_COOKIE_NAME);
+  const authCookie = req.cookies.get(AUTH_COOKIE_NAME);
+  const isAuthenticated = authCookie?.value === 'authenticated';
 
   // 1. 로그인 되어있는데 로그인 페이지 접근 시 대시보드로 리다이렉트
   if (path === '/login' && isAuthenticated) {
@@ -26,24 +30,13 @@ export function middleware(req: NextRequest) {
         { status: 401, headers: { 'content-type': 'application/json' } }
       );
     }
-    return NextResponse.redirect(new URL('/login', req.url));
-  }
-
-  // 3. API 프록시 (인증된 요청만 통과됨)
-  if (url.includes('/api/')) {
-    const centralUrl = process.env.CENTRAL_SERVER_URL || 'http://localhost:3001';
-    const target = new URL(centralUrl);
-    target.pathname = req.nextUrl.pathname;
-    target.search = req.nextUrl.search;
-
-    return NextResponse.redirect(target);
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('from', path);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
 }
-
-// WebSocket 프록시는 Next.js가 자동으로 처리하지 않음
-// 대신 custom server를 사용하거나, WebSocket을 central server로 직접 연결
 
 export const config = {
   matcher: [
