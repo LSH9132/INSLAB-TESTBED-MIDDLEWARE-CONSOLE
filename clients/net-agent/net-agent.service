@@ -1,0 +1,15 @@
+[Unit]
+Description=INSLAB Net Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/net-agent/net-agent.env
+WorkingDirectory=/opt/net-agent
+ExecStart=/opt/net-agent/net-agent
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

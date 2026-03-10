@@ -10,27 +10,34 @@ interface Props {
 
 function formatBps(bps: number): string {
   if (bps >= 1_000_000) return `${(bps / 1_000_000).toFixed(2)} MB/s`;
-  if (bps >= 1_000)     return `${(bps / 1_000).toFixed(1)} KB/s`;
+  if (bps >= 1_000) return `${(bps / 1_000).toFixed(1)} KB/s`;
   return `${Math.round(bps)} B/s`;
 }
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(2)} GB`;
-  if (bytes >= 1_048_576)     return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  if (bytes >= 1_024)         return `${(bytes / 1_024).toFixed(1)} KB`;
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
   return `${bytes} B`;
 }
 
 function Sparkline({ values, color, id }: { values: number[]; color: string; id: string }) {
   if (values.length < 2) {
-    return <svg viewBox="0 0 200 40" className="w-full h-10"><line x1="0" y1="20" x2="200" y2="20" stroke="#4b5563" strokeWidth="1" /></svg>;
+    return (
+      <svg viewBox="0 0 200 40" className="w-full h-10">
+        <line x1="0" y1="20" x2="200" y2="20" stroke="#4b5563" strokeWidth="1" />
+      </svg>
+    );
   }
+
   const max = Math.max(...values, 1);
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * 200;
-    const y = 40 - (v / max) * 36;
-    return `${x},${y}`;
-  }).join(' ');
+  const pts = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * 200;
+      const y = 40 - (v / max) * 36;
+      return `${x},${y}`;
+    })
+    .join(' ');
   const area = `0,40 ${pts} 200,40`;
 
   return (
@@ -71,20 +78,16 @@ export function NetworkInterfacePanel({ piId }: Props) {
   const interfaces = latest.interfaces;
   const active = selectedIface ?? interfaces[0]?.iface ?? null;
   const currentIface = interfaces.find((iface: NetworkInterfaceStat) => iface.iface === active);
-
-  // Build sparkline data from history
   const rxHistory = (history[active ?? ''] ?? []).map(stat => stat.rxBps);
   const txHistory = (history[active ?? ''] ?? []).map(stat => stat.txBps);
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">네트워크 인터페이스</h3>
         <span className="text-xs text-gray-400">실시간 (5s)</span>
       </div>
 
-      {/* Interface selector */}
       <div className="flex gap-2 px-4 py-2 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
         {interfaces.map((iface: NetworkInterfaceStat) => (
           <button
@@ -103,9 +106,7 @@ export function NetworkInterfacePanel({ piId }: Props) {
 
       {currentIface && (
         <div className="p-4 space-y-4">
-          {/* Speed meters */}
           <div className="grid grid-cols-2 gap-4">
-            {/* RX */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -120,7 +121,7 @@ export function NetworkInterfacePanel({ piId }: Props) {
                 누적: {formatBytes(currentIface.rxBytes)} | {Math.round(currentIface.rxPps)} pps
               </div>
             </div>
-            {/* TX */}
+
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -137,7 +138,6 @@ export function NetworkInterfacePanel({ piId }: Props) {
             </div>
           </div>
 
-          {/* All interfaces summary table */}
           {interfaces.length > 1 && (
             <table className="w-full text-xs border-collapse">
               <thead>

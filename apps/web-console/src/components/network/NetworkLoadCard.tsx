@@ -9,7 +9,7 @@ interface Props {
 
 function formatBps(bps: number): string {
   if (bps >= 1_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`;
-  if (bps >= 1_000)     return `${(bps / 1_000).toFixed(1)} KB/s`;
+  if (bps >= 1_000) return `${(bps / 1_000).toFixed(1)} KB/s`;
   return `${Math.round(bps)} B/s`;
 }
 
@@ -19,22 +19,17 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
   }
 
   const max = Math.max(...values, 1);
-  const points = values.map((value, index) => {
-    const x = (index / (values.length - 1)) * 64;
-    const y = 24 - (value / max) * 20;
-    return `${x},${y}`;
-  }).join(' ');
+  const points = values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * 64;
+      const y = 24 - (value / max) * 20;
+      return `${x},${y}`;
+    })
+    .join(' ');
 
   return (
     <svg viewBox="0 0 64 24" className="h-6 w-16">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -51,15 +46,11 @@ export function NetworkLoadCard({ piId, piName }: Props) {
     );
   }
 
-  // Aggregate across all non-lo interfaces
-  const totalRxBps = latest?.interfaces.reduce(
-    (sum: number, stat: { rxBps: number }) => sum + stat.rxBps,
-    0,
-  ) ?? 0;
-  const totalTxBps = latest?.interfaces.reduce(
-    (sum: number, stat: { txBps: number }) => sum + stat.txBps,
-    0,
-  ) ?? 0;
+  const totalRxBps =
+    latest?.interfaces.reduce((sum: number, stat: { rxBps: number }) => sum + stat.rxBps, 0) ?? 0;
+  const totalTxBps =
+    latest?.interfaces.reduce((sum: number, stat: { txBps: number }) => sum + stat.txBps, 0) ?? 0;
+
   const sampleLength = Math.max(0, ...Object.values(history).map(points => points.length));
   const rxSeries = Array.from({ length: sampleLength }, (_, index) =>
     Object.values(history).reduce((sum, points) => sum + (points[index]?.rxBps ?? 0), 0),
@@ -68,17 +59,14 @@ export function NetworkLoadCard({ piId, piName }: Props) {
     Object.values(history).reduce((sum, points) => sum + (points[index]?.txBps ?? 0), 0),
   );
 
-  const rxColor = totalRxBps > 5_000_000 ? 'text-red-500' : totalRxBps > 1_000_000 ? 'text-yellow-500' : 'text-green-500';
-  const txColor = totalTxBps > 5_000_000 ? 'text-red-500' : totalTxBps > 1_000_000 ? 'text-yellow-500' : 'text-blue-500';
-
   return (
     <div className="mt-2 space-y-2 text-xs font-mono" title={`${piName} network load`}>
       <div className="flex items-center justify-between gap-3">
-        <span className={rxColor}>↓ {formatBps(totalRxBps)}</span>
+        <span className="text-green-600 dark:text-green-400">↓ {formatBps(totalRxBps)}</span>
         <Sparkline values={rxSeries} color="#22c55e" />
       </div>
       <div className="flex items-center justify-between gap-3">
-        <span className={txColor}>↑ {formatBps(totalTxBps)}</span>
+        <span className="text-blue-600 dark:text-blue-400">↑ {formatBps(totalTxBps)}</span>
         <Sparkline values={txSeries} color="#3b82f6" />
       </div>
     </div>

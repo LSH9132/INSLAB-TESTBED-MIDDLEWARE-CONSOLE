@@ -255,12 +255,17 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {!isEditing && (
-        <Link
-          href={`/terminal/${pi.id}`}
-          className="inline-block mt-6 bg-[#3182F6] hover:bg-[#1B64DA] text-white px-6 py-3 rounded-xl text-[14px] font-bold transition-colors"
-        >
-          터미널 열기
-        </Link>
+        <>
+          <Link
+            href={`/terminal/${pi.id}`}
+            className="inline-block mt-6 bg-[#3182F6] hover:bg-[#1B64DA] text-white px-6 py-3 rounded-xl text-[14px] font-bold transition-colors"
+          >
+            터미널 열기
+          </Link>
+          <div className="mt-6 max-w-4xl">
+            <NetworkInterfacePanel piId={pi.id} />
+          </div>
+        </>
       )}
 
       {/* 네트워크 인터페이스 패널 — 온라인 PI에만 표시 */}

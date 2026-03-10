@@ -28,9 +28,6 @@ COPY --from=base /app/apps/web-console/.next/standalone ./
 # Copy static assets to the correct location within standalone structure
 COPY --from=base /app/apps/web-console/.next/static ./apps/web-console/.next/static
 
-# Copy public folder if exists
-COPY --from=base /app/apps/web-console/public ./apps/web-console/public
-
 # Copy custom server
 COPY --from=base /app/apps/web-console/custom-server.js ./apps/web-console/custom-server.js
 
