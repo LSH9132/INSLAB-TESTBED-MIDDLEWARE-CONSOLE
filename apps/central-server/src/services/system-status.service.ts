@@ -7,7 +7,7 @@ const startTime = Date.now();
 // Log Server 상태 확인
 async function checkLogServer(): Promise<ServiceStatus> {
   try {
-    const response = await fetch(`${config.logServerUrl}/health`, {
+    const response = await fetch(`${config.logServerUrl}/api/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(3000) // 3초 타임아웃
     });

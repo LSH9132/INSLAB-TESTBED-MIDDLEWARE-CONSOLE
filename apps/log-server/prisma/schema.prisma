@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Log {
+  id         BigInt   @id @default(autoincrement())
+  timestamp  DateTime
+  sourcePi   String   @map("source_pi")
+  destPi     String?  @map("dest_pi")
+  seqNum     Int?     @map("seq_num")
+  logType    String?  @map("log_type")
+  payload    String?
+  receivedAt DateTime @default(now()) @map("received_at")
+
+  @@index([timestamp])
+  @@index([sourcePi])
+  @@index([logType])
+  @@map("logs")
+}
+
+model NetworkInterfaceSample {
+  id           BigInt   @id @default(autoincrement())
+  nodeId       String   @map("node_id")
+  iface        String
+  timestamp    DateTime
+  seq          Int?
+  rxBytes      BigInt   @map("rx_bytes")
+  txBytes      BigInt   @map("tx_bytes")
+  rxPackets    BigInt   @map("rx_packets")
+  txPackets    BigInt   @map("tx_packets")
+  rxBps        Float    @map("rx_bps")
+  txBps        Float    @map("tx_bps")
+  rxPps        Float    @map("rx_pps")
+  txPps        Float    @map("tx_pps")
+  agentVersion String?  @map("agent_version")
+  receivedAt   DateTime @default(now()) @map("received_at")
+
+  @@unique([nodeId, iface, timestamp])
+  @@index([nodeId, timestamp])
+  @@index([nodeId, iface, timestamp])
+  @@map("network_interface_samples")
+}

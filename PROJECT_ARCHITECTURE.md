@@ -1,175 +1,240 @@
 # INSLAB Testbed Middleware Console - 아키텍처 문서
 
-이 문서는 INSLAB Testbed Middleware Console 프로젝트의 아키텍처, 구성 요소 및 운영 흐름에 대한 포괄적인 개요를 제공합니다.
+이 문서는 현재 작업 브랜치 기준의 Middleware Console 아키텍처를 설명합니다. 핵심 변화는 네트워크 부하의 원천 수집 책임이 `central-server`에서 `PI net-agent + log-server` 조합으로 이동했다는 점입니다.
 
-## 1. 개요 (Overview)
+## 1. 개요
 
-**INSLAB Testbed Middleware Console**은 링 토폴로지로 배치된 라즈베리 파이(Raspberry Pi) 노드 클러스터를 모니터링하고 제어하기 위해 설계된 중앙 집중식 관리 시스템입니다. 다음과 같은 기능을 위한 웹 기반 인터페이스를 제공합니다:
+Middleware Console은 Raspberry Pi 테스트베드의 상태, 터미널 접속, 토폴로지, 로그, 네트워크 부하를 중앙에서 관리하는 시스템입니다.
 
-*   **모니터링 (Monitoring)**: 파이 노드의 실시간 상태(온라인/오프라인) 확인.
-*   **관리 (Management)**: 테스트베드 내 노드 등록 및 구성.
-*   **디버깅 (Debugging)**: 브라우저를 통해 각 노드에 직접 SSH 터미널 접속.
-*   **관측가능성 (Observability)**: 모든 노드로부터 로그를 중앙에서 수집 및 조회.
-*   **시각화 (Visualization)**: 링 토폴로지의 대화형 그래프 시각화.
+현재 아키텍처의 원칙은 다음과 같습니다.
 
-## 2. 시스템 아키텍처 (System Architecture)
+- PI에서 직접 측정한 데이터를 서버로 보낸다.
+- `log-server`가 원시 관측 데이터의 저장소가 된다.
+- `central-server`는 제어와 프록시, 가공 API 역할을 맡는다.
+- `web-console`은 수집하지 않고 표시한다.
 
-이 시스템은 **모노레포(Monorepo)** 내에서 관리되는 **마이크로서비스 유사 아키텍처**를 따릅니다. 세 가지 주요 컴포넌트로 구성됩니다:
-
-1.  **Web Console (Frontend)**: 사용자 인터페이스를 제공하는 Next.js 애플리케이션.
-2.  **Central Server (Backend)**: 상태, SSH 연결, 상태 확인(Health Check)을 관리하는 핵심 제어 플레인.
-3.  **Log Server (Backend)**: 고속 로그 수집 및 저장을 위한 전용 서비스.
+## 2. 시스템 구성
 
 ```mermaid
 graph TD
-    subgraph "User Machine"
-        Browser[웹 브라우저]
+    subgraph "Client"
+        Browser["Web Console UI"]
     end
 
-    subgraph "Server Host (Mac/Linux)"
-        Web[Web Console (Next.js)]
-        Central[Central Server (Express)]
-        Log[Log Server (Express + TCP)]
-        
-        DB_Central[(SQLite: central.sqlite)]
-        DB_Logs[(SQLite: logs.sqlite)]
+    subgraph "Control Plane Host"
+        Web["web-console<br/>Next.js :3000"]
+        Central["central-server<br/>Express :3001"]
     end
 
-    subgraph "Testbed Network"
-        Pi1[Raspberry Pi 1]
-        Pi2[Raspberry Pi 2]
-        Pi3[Raspberry Pi 3]
+    subgraph "Observability Host"
+        Log["log-server<br/>NestJS :3002 / TCP :5140"]
+        Pg[("PostgreSQL")]
+        Redis[("Redis AOF")]
     end
 
-    %% Communication Flows
-    Browser -- "HTTP / WebSocket (3000)" --> Web
-    
-    Web -- "Proxy /api (3001)" --> Central
-    
-    Central -- "Read/Write" --> DB_Central
-    Central -- "HTTP Query (3002)" --> Log
-    Central -- "SSH (22)" --> Pi1
-    Central -- "TCP Check" --> Pi1
-    Central -- "SSH (22)" --> Pi2
-    Central -- "TCP Check" --> Pi2
-    
-    Pi1 -- "TCP Log Stream (5140)" --> Log
-    Pi2 -- "TCP Log Stream (5140)" --> Log
-    Pi3 -- "TCP Log Stream (5140)" --> Log
-    
-    Log -- "Write" --> DB_Logs
+    subgraph "PI Nodes"
+        Pi1["pi + net-agent"]
+        Pi2["pi + net-agent"]
+        PiN["pi + net-agent"]
+    end
+
+    Browser --> Web
+    Web --> Central
+    Central --> Log
+    Log --> Pg
+    Log --> Redis
+    Pi1 -->|"TCP ingest + ACK"| Log
+    Pi2 -->|"TCP ingest + ACK"| Log
+    PiN -->|"TCP ingest + ACK"| Log
+    Central -->|"SSH / 상태 점검"| Pi1
+    Central -->|"SSH / 상태 점검"| Pi2
+    Central -->|"SSH / 상태 점검"| PiN
 ```
 
-## 3. 프로젝트 구조 (Project Structure)
+## 3. 컴포넌트 책임
 
-이 프로젝트는 **pnpm workspaces**를 사용하여 애플리케이션과 공유 패키지 간의 의존성을 관리합니다.
+### 3.1. `clients/net-agent`
 
+- 각 PI에서 실행되는 C 기반 수집기
+- `/proc/net/dev`를 읽어 인터페이스별 RX/TX 카운터와 delta를 계산
+- 샘플을 로컬 NDJSON 스풀에 먼저 기록
+- 원격 `log-server`에 TCP로 전송
+- 서버 `ACK`를 받은 샘플만 스풀에서 커밋
+- 스풀 한도 초과 시 가장 오래된 미전송 샘플부터 제거
+
+### 3.2. `apps/log-server`
+
+- 독립 배포 가능한 원격 수집 서버
+- 스택: `NestJS + Prisma + PostgreSQL + Redis`
+- TCP ingest 포트 `5140`
+- HTTP API 포트 `3002`
+- 역할:
+  - 로그 수집
+  - 네트워크 메트릭 수집
+  - Redis 큐를 통한 ingest 버퍼링
+  - PostgreSQL 영속화
+  - 조회 API 제공
+
+주요 엔드포인트:
+
+- `GET /api/health`
+- `GET /api/logs`
+- `POST /api/net-metrics/ingest`
+- `GET /api/net-metrics/:nodeId/latest`
+- `GET /api/net-metrics/:nodeId/history`
+
+### 3.3. `apps/central-server`
+
+- 시스템 제어 허브
+- 스택: `Express + SQLite + ssh2 + ws`
+- 역할:
+  - PI 등록/수정/삭제
+  - SSH 터미널 프록시
+  - PI 상태 점검
+  - 토폴로지 계산
+  - `log-server` API 프록시
+
+중요한 점:
+
+- `central-server`는 더 이상 네트워크 부하의 직접 수집자가 아니다.
+- 네트워크 통계의 source of truth는 `log-server`이다.
+
+### 3.4. `apps/web-console`
+
+- 사용자 인터페이스
+- 스택: `Next.js 14 + React`
+- 역할:
+  - PI 상태 대시보드
+  - 네트워크 부하 카드와 상세 패널
+  - 로그 조회 화면
+  - SSH 터미널 화면
+  - 토폴로지 시각화
+
+## 4. 네트워크 부하 데이터 흐름
+
+### 4.1. PI 수집
+
+1. `net-agent`가 `SAMPLE_INTERVAL_SEC` 주기로 `/proc/net/dev`를 읽는다.
+2. `lo`를 제외한 인터페이스별 누적 바이트/패킷 카운터를 파싱한다.
+3. 직전 샘플과 차이를 계산해 `rxBps`, `txBps`, `rxPps`, `txPps`를 구한다.
+4. 샘플을 로컬 스풀 파일에 append 한다.
+
+### 4.2. 전송과 신뢰성
+
+1. `net-agent`가 스풀의 미전송 라인을 TCP로 `log-server:5140`에 전송한다.
+2. `log-server`가 유효한 샘플이면 Redis ingest 큐에 넣고 `ACK`를 반환한다.
+3. `net-agent`는 `ACK`를 받은 경우에만 커밋 오프셋을 전진시킨다.
+4. 서버 장애 시 스풀에 계속 적재된다.
+5. 스풀 상한을 넘으면 오래된 샘플부터 드롭한다.
+
+### 4.3. 서버 적재
+
+1. `log-server` TCP receiver가 Redis 큐에 push 한다.
+2. worker가 Redis 큐를 batch로 읽는다.
+3. Prisma를 통해 PostgreSQL `network_interface_samples` 테이블에 적재한다.
+4. 조회 API는 최신값과 히스토리를 제공한다.
+
+### 4.4. 표시
+
+1. `web-console`이 `central-server /api/net-stats/...`를 호출한다.
+2. `central-server`가 `log-server /api/net-metrics/...`를 프록시한다.
+3. UI는 5초 폴링으로 카드와 상세 패널을 갱신한다.
+
+## 5. 로그 데이터 흐름
+
+- 로그 수집도 동일하게 `log-server`가 원천 저장소 역할을 맡는다.
+- `central-server /api/logs`는 `log-server /api/logs`를 프록시한다.
+
+즉 현재 구조는 다음처럼 해석해야 합니다.
+
+- 로그 경로: `PI -> log-server -> central-server -> web-console`
+- 네트워크 경로: `PI net-agent -> log-server -> central-server -> web-console`
+
+## 6. 데이터 저장소
+
+### 6.1. `central-server` SQLite
+
+저장 대상:
+
+- PI 등록 정보
+- 중앙 서버 운영 메타데이터
+- 토폴로지 관련 설정
+
+저장하지 않는 것:
+
+- 네트워크 부하 시계열 원본
+- 원시 로그 수집 데이터
+
+### 6.2. `log-server` PostgreSQL
+
+주요 테이블:
+
+- `logs`
+- `network_interface_samples`
+
+`network_interface_samples` 주요 컬럼:
+
+- `node_id`
+- `iface`
+- `timestamp`
+- `seq`
+- `rx_bytes`
+- `tx_bytes`
+- `rx_packets`
+- `tx_packets`
+- `rx_bps`
+- `tx_bps`
+- `rx_pps`
+- `tx_pps`
+- `agent_version`
+- `received_at`
+
+### 6.3. `log-server` Redis
+
+역할:
+
+- ingest 버퍼
+- PostgreSQL 적재 전 임시 큐
+
+현재 설정:
+
+- AOF 활성화
+- 컨테이너 재시작 시 큐 복구 가능
+
+## 7. Docker 배포
+
+루트 `docker-compose.yml` 기준으로 다음 컨테이너를 함께 띄웁니다.
+
+- `central-server`
+- `web-console`
+- `log-server`
+- `log-db` (PostgreSQL)
+- `log-redis` (Redis AOF)
+
+실행:
+
+```sh
+docker compose up --build
 ```
-/
-├── apps/
-│   ├── central-server/   # 제어 플레인 (Node.js/Express)
-│   ├── log-server/       # 로그 관리 (Node.js/Express + TCP)
-│   └── web-console/      # 프론트엔드 UI (Next.js 14)
-├── packages/
-│   └── shared/           # 공유 TypeScript 타입, 상수, 유틸리티
-├── docker-compose.yml    # 컨테이너화된 배포를 위한 오케스트레이션
-└── pnpm-workspace.yaml   # 워크스페이스 설정
+
+독립 `log-server`만 띄우려면:
+
+```sh
+docker compose -f apps/log-server/docker-compose.yml up --build
 ```
 
-## 4. 컴포넌트 상세 (Component Details)
+## 8. 운영상 주의점
 
-### 4.1. Central Server (`apps/central-server`)
-*   **역할**: 시스템의 두뇌 역할.
-*   **스택**: Node.js, Express, `better-sqlite3`, `ssh2`, `ws`.
-*   **포트**: `3001` (HTTP API & WebSocket).
-*   **주요 기능**:
-    *   **Pi Registry**: 활성 파이 노드 목록 관리 (CRUD).
-    *   **Health Monitor**: 파이의 관리 IP(기본값: TCP 22번 포트 확인)에 주기적으로 연결하여 온라인/오프라인 상태 판별.
-    *   **SSH Proxy**: 파이 노드에 SSH 연결을 수립하고 WebSocket(`ws` 라이브러리)을 통해 상태를 Web Console로 파이핑(piping)하여 웹 기반 터미널 기능 제공.
-    *   **Topology Management**: 등록된 노드를 기반으로 링 토폴로지 구조 계산.
-    *   **Log Proxy**: 프론트엔드 네트워킹 단순화를 위해 로그 조회 요청을 Log Server로 프록시(Proxy).
+- `net-agent`의 `NODE_ID`는 `central-server`에 등록된 PI의 `id`와 일치해야 한다.
+- `log-server`를 다른 호스트에서 돌릴 수 있으므로 방화벽에서 `3002`, `5140` 접근 정책을 명확히 해야 한다.
+- `log-server`는 Prisma 7 + `@prisma/adapter-pg` 조합으로 PostgreSQL에 직접 연결한다.
+- PI 수가 늘어나면 PostgreSQL retention/downsampling 전략을 추가해야 한다.
+- 현재 ingest는 `Redis -> background worker -> PostgreSQL` 비동기 플러시 구조다. 따라서 수집 직후 `latest` 조회에는 짧은 지연이 있을 수 있다.
+- 현재 UI는 5초 폴링이다. 필요하면 이후 `log-server -> central-server -> web-console` WebSocket 경로로 확장할 수 있다.
 
-### 4.2. Log Server (`apps/log-server`)
-*   **역할**: 전용 로그 수집기.
-*   **스택**: Node.js, Net (TCP), Express (HTTP), `better-sqlite3`.
-*   **포트**:
-    *   `5140` (TCP): 원시(Raw) 로그 수집.
-    *   `3002` (HTTP): 조회 API.
-*   **주요 기능**:
-    *   **TCP Receiver**: 파이 노드로부터 JSON 형식의 원시 로그 라인을 수신.
-    *   **High-Performance Write**: 로그를 버퍼링하여 별도의 SQLite 데이터베이스(`logs.sqlite`)에 기록.
-    *   **Query API**: 소스, 목적지, 유형, 시간별로 로그를 필터링하는 엔드포인트 제공.
+## 9. 현재 작업 브랜치 기준 미완료 항목
 
-### 4.3. Web Console (`apps/web-console`)
-*   **역할**: 사용자 인터페이스.
-*   **스택**: Next.js 14 (App Router), React, Tailwind CSS, Xterm.js, D3.js.
-*   **포트**: `3000`.
-*   **주요 기능**:
-    *   **Dashboard**: 실시간 상태 표시기와 함께 파이 노드 그리드 표시.
-    *   **Topology View**: D3.js를 사용하여 링 네트워크 시각화.
-    *   **Log Viewer**: 필터링 기능이 있는 시스템 로그의 표 형식 뷰.
-    *   **Web Terminal**: Xterm.js를 사용하여 브라우저 내에서 완전히 기능하는 SSH 터미널 제공 (Central Server를 통해 연결).
-    *   **API Proxy**: 모든 클라이언트 측 API 호출은 Next.js Rewrites를 통해 백엔드 서비스로 라우팅되어 CORS 문제를 방지하고 설정을 단순화함.
-
-### 4.4. Shared Package (`packages/shared`)
-*   **역할**: 단일 진실 공급원 (Single Source of Truth).
-*   **내용**:
-    *   TypeScript 인터페이스 (`PiNode`, `LogEntry`, `RingTopology`).
-    *   상수 (`PORTS`, `API_PATHS`, `TIMEOUTS`).
-
-## 5. 데이터 흐름 및 통신 (Data Flow & Communication)
-
-### 5.1. 실시간 상태 업데이트 (Real-time Status Updates)
-1.  **Monitor**: `central-server`의 `PiMonitorService`가 모든 등록된 노드를 순회합니다.
-2.  **Check**: 노드의 SSH 포트(기본 22)에 대해 TCP 핸드셰이크를 시도합니다.
-3.  **Update**: 상태가 변경되면(예: Online -> Offline) DB를 업데이트합니다.
-4.  **Broadcast**: 새로운 상태가 WebSocket(`ws/status`)을 통해 연결된 `web-console` 클라이언트로 푸시(Push)됩니다.
-
-### 5.2. 웹 터미널 (SSH)
-1.  **User**: 브라우저에서 특정 Pi에 대한 터미널을 엽니다.
-2.  **Connect**: 브라우저가 `central-server`로 WebSocket을 연결합니다 (`/ws/terminal/:id`).
-3.  **Proxy**: `central-server`는 설정된 개인 키(`~/.ssh/id_rsa`)를 사용하여 `ssh2`로 대상 Pi에 연결합니다.
-4.  **Pipe**: Stdin/Stdout/Stderr가 WebSocket과 SSH 채널 간에 양방향으로 파이핑됩니다.
-
-### 5.3. 로그 수집 및 조회 (Log Ingestion & Query)
-1.  **Ingest**: 파이 노드(이 리포지토리에 없는 클라이언트 소프트웨어 실행)가 `log-server:5140`으로 TCP를 통해 JSON 로그를 전송합니다.
-2.  **Store**: `log-server`는 로그를 파싱하여 `logs.sqlite`에 삽입합니다.
-3.  **Query**: 사용자가 Web Console에서 로그를 요청합니다.
-    *   Web Console -> `central-server/api/logs`
-    *   Central Server -> `log-server:3002/api/logs`
-    *   Log Server -> SQLite 쿼리 -> JSON 반환
-
-## 6. 데이터베이스 스키마 (SQLite)
-
-### Central Database (`central.sqlite`)
-| 테이블 | 컬럼 | 타입 | 설명 |
-| :--- | :--- | :--- | :--- |
-| **`pi_nodes`** | `id` | TEXT (PK) | 고유 노드 ID (UUID) |
-| | `hostname` | TEXT | 식별 가능한 이름 |
-| | `ip_management` | TEXT | SSH/관리용 IP |
-| | `ip_ring` | TEXT | 링 네트워크 트래픽용 IP |
-| | `ssh_port` | INTEGER | SSH 포트 (기본 22) |
-| | `ssh_user` | TEXT | SSH 사용자명 (기본 'pi') |
-| | `status` | TEXT | 'online' / 'offline' / 'unknown' |
-| | `last_seen` | INTEGER | 마지막 성공적 확인 타임스탬프 |
-
-### Log Database (`logs.sqlite`)
-| 테이블 | 컬럼 | 타입 | 설명 |
-| :--- | :--- | :--- | :--- |
-| **`logs`** | `id` | INTEGER (PK) | 자동 증가 ID |
-| | `timestamp` | INTEGER | 로그 생성 시간 |
-| | `source_pi` | TEXT | 발신 노드 ID |
-| | `dest_pi` | TEXT | 수신 노드 ID (선택 사항) |
-| | `log_type` | TEXT | 'ring_send', 'ring_recv', 'system' |
-| | `payload` | TEXT | 로그 메시지 내용 |
-
-## 7. 설정 (Configuration)
-
-*   **환경 변수** (`.env`):
-    *   `PORT`: Central Server 포트 (3001).
-    *   `LOG_SERVER_URL`: Central이 Log Server에 도달하기 위한 URL.
-    *   `SSH_PRIVATE_KEY_PATH`: 파이에 연결하기 위한 호스트의 SSH 키 경로.
-    *   `DB_PATH`: SQLite 파일 경로.
-
-*   **Docker**:
-    *   `docker-compose.yml`은 데이터 지속성을 위한 공유 볼륨(`central-data`, `log-data`)과 함께 다중 컨테이너 설정을 정의합니다.
+- `web-console` 실시간 WebSocket 갱신
+- 장기 보관용 downsampling 정책
+- `net-agent` 패키징 자동화
+- 에이전트 인증 및 TLS
