@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import type { PiNode } from '@inslab/shared';
+import { NetworkLoadCard } from '@/components/network/NetworkLoadCard';
 
 export function PiStatusCard({ pi }: { pi: PiNode }) {
   const getStatusColor = (status: string) => {
@@ -51,6 +52,8 @@ export function PiStatusCard({ pi }: { pi: PiNode }) {
           </span>
         </div>
       </div>
+
+      {pi.status === 'online' && <NetworkLoadCard piId={pi.id} />}
 
       <div className="flex gap-2">
         <Link
