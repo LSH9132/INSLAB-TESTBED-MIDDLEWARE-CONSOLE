@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import type { PiNode, PiAuthMethod } from '@inslab/shared';
+import { NetworkInterfacePanel } from '@/components/network/NetworkInterfacePanel';
 
 export default function PiDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -260,6 +261,14 @@ export default function PiDetailPage({ params }: { params: { id: string } }) {
         >
           터미널 열기
         </Link>
+      )}
+
+      {/* 네트워크 인터페이스 패널 — 온라인 PI에만 표시 */}
+      {!isEditing && pi.status === 'online' && (
+        <div className="mt-8">
+          <h3 className="text-[16px] font-bold text-[#191F28] dark:text-gray-50 mb-3">네트워크 부하</h3>
+          <NetworkInterfacePanel piId={pi.id} />
+        </div>
       )}
     </div>
   );
