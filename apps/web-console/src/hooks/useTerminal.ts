@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { resolveWebSocketUrl } from '@/lib/urls';
 
 export type TerminalStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -27,13 +28,8 @@ export function useTerminal(containerRef: React.RefObject<HTMLDivElement | null>
         termRef.current = term;
 
         // WebSocket 연결 - 클라이언트에서만 실행
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const centralServerUrl = process.env.NEXT_PUBLIC_CENTRAL_SERVER_URL || 'http://localhost:3001';
-
         try {
-          const url = new URL(centralServerUrl);
-          const wsUrl = `${protocol}//${url.host}/ws/terminal/${piId}`;
-          const ws = new WebSocket(wsUrl);
+          const ws = new WebSocket(resolveWebSocketUrl(`/ws/terminal/${piId}`));
           ws.binaryType = 'arraybuffer';
 
           ws.onopen = () => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { WS_PATH_NET_STATS, type NetworkInterfaceStat, type NetworkStatSnapshot } from '@inslab/shared';
 import { apiFetch } from '@/lib/api';
+import { resolveWebSocketUrl } from '@/lib/urls';
 
 interface UseNetStatsOptions {
   piId: string;
@@ -54,9 +55,14 @@ export function useNetStats({ piId, historyLimit = 60 }: UseNetStatsOptions) {
   }, [piId, historyLimit]);
 
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${proto}//${window.location.host}${WS_PATH_NET_STATS}`;
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket;
+
+    try {
+      ws = new WebSocket(resolveWebSocketUrl(WS_PATH_NET_STATS));
+    } catch (e) {
+      setError(String(e));
+      return;
+    }
 
     ws.onmessage = (evt) => {
       try {

@@ -1,7 +1,7 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || '';
+import { resolveApiUrl } from './urls';
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, init);
+  const res = await fetch(resolveApiUrl(path), init);
 
   if (!res.ok) {
     // 서버에서 보낸 에러 메시지 파싱

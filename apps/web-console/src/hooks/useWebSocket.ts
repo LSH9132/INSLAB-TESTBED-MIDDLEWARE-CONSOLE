@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { resolveWebSocketUrl } from '@/lib/urls';
 
 export function useWebSocket(path: string, onMessage: (data: any) => void) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -14,11 +15,8 @@ export function useWebSocket(path: string, onMessage: (data: any) => void) {
   // connect 함수를 useRef로 저장하여 무한 루프 방지
   if (!connectRef.current) {
     connectRef.current = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const centralServerUrl = process.env.NEXT_PUBLIC_CENTRAL_SERVER_URL || 'http://localhost:3001';
       try {
-        const url = new URL(centralServerUrl);
-        const ws = new WebSocket(`${protocol}//${url.host}${path}`);
+        const ws = new WebSocket(resolveWebSocketUrl(path));
         ws.onmessage = (e) => {
           try { onMessageRef.current(JSON.parse(e.data)); } catch { onMessageRef.current(e.data); }
         };
