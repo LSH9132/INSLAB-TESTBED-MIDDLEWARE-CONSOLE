@@ -5,6 +5,7 @@ export const LOG_SERVER_HTTP_PORT = 3002;
 
 export const WS_PATH_TERMINAL = '/ws/terminal';
 export const WS_PATH_STATUS = '/ws/status';
+export const WS_PATH_NET_STATS = '/ws/net-stats';
 
 export const PI_HEALTH_CHECK_INTERVAL_MS = 10_000;
 
