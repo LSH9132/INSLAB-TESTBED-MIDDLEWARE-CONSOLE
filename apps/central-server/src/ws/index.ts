@@ -1,8 +1,9 @@
 import { WebSocketServer } from 'ws';
 import type { Server } from 'http';
-import { WS_PATH_TERMINAL, WS_PATH_STATUS } from '@inslab/shared';
+import { WS_PATH_NET_STATS, WS_PATH_TERMINAL, WS_PATH_STATUS } from '@inslab/shared';
 import { handleTerminalConnection } from './terminal.handler.js';
 import { addStatusClient } from './status.handler.js';
+import { registerNetStatsClient } from './net-stats.handler.js';
 
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ server });
@@ -12,6 +13,11 @@ export function setupWebSocket(server: Server) {
 
     if (url === WS_PATH_STATUS) {
       addStatusClient(ws);
+      return;
+    }
+
+    if (url === WS_PATH_NET_STATS) {
+      registerNetStatsClient(ws);
       return;
     }
 
