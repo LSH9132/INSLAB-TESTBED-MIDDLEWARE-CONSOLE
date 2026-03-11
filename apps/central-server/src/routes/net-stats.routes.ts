@@ -1,8 +1,16 @@
 import { Router } from 'express';
-import { config } from '../config.js';
 import { getPiById } from '../services/pi-registry.service.js';
+import type { NetworkStatSnapshot } from '@inslab/shared';
+import { getNetStatsSettings } from '../services/app-settings.service.js';
+import { config } from '../config.js';
 
 export const netStatsRouter = Router();
+
+function isFreshSnapshot(snapshot: NetworkStatSnapshot): boolean {
+  const freshnessTimestamp = snapshot.receivedAt ?? snapshot.timestamp;
+  const snapshotMs = freshnessTimestamp < 1_000_000_000_000 ? freshnessTimestamp * 1000 : freshnessTimestamp;
+  return Date.now() - snapshotMs <= getNetStatsSettings().freshnessSec * 1000;
+}
 
 netStatsRouter.get('/:piId', async (req, res) => {
   const pi = getPiById(req.params.piId);
@@ -11,7 +19,16 @@ netStatsRouter.get('/:piId', async (req, res) => {
   try {
     const response = await fetch(`${config.logServerUrl}/api/net-metrics/${pi.id}/latest`);
     const data = await response.json();
-    res.status(response.status).json(data);
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    const snapshot = data as NetworkStatSnapshot;
+    if (!snapshot.interfaces?.length || !isFreshSnapshot(snapshot)) {
+      return res.status(404).json({ error: 'Network stats unavailable' });
+    }
+
+    res.json(snapshot);
   } catch {
     res.status(502).json({ error: 'Log server unavailable' });
   }

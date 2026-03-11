@@ -24,7 +24,7 @@ function formatBytes(bytes: number): string {
 function Sparkline({ values, color, id }: { values: number[]; color: string; id: string }) {
   if (values.length < 2) {
     return (
-      <svg viewBox="0 0 200 40" className="w-full h-10">
+      <svg viewBox="0 0 200 40" className="w-full h-10 transition-opacity duration-300">
         <line x1="0" y1="20" x2="200" y2="20" stroke="#4b5563" strokeWidth="1" />
       </svg>
     );
@@ -41,7 +41,7 @@ function Sparkline({ values, color, id }: { values: number[]; color: string; id:
   const area = `0,40 ${pts} 200,40`;
 
   return (
-    <svg viewBox="0 0 200 40" className="w-full h-10 overflow-hidden">
+    <svg viewBox="0 0 200 40" className="w-full h-10 overflow-hidden transition-opacity duration-300">
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.4" />
@@ -112,12 +112,12 @@ export function NetworkInterfacePanel({ piId }: Props) {
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   <span className="text-green-500">↓</span> 수신 (RX)
                 </span>
-                <span className="text-sm font-mono font-semibold text-green-600 dark:text-green-400">
+                <span className="min-w-[110px] text-right text-sm font-mono font-semibold text-green-600 dark:text-green-400 tabular-nums transition-all duration-300">
                   {formatBps(currentIface.rxBps)}
                 </span>
               </div>
               <Sparkline values={rxHistory} color="#22c55e" id={`rx-${active}`} />
-              <div className="text-xs text-gray-400 dark:text-gray-500">
+              <div className="text-xs text-gray-400 dark:text-gray-500 tabular-nums transition-all duration-300">
                 누적: {formatBytes(currentIface.rxBytes)} | {Math.round(currentIface.rxPps)} pps
               </div>
             </div>
@@ -127,12 +127,12 @@ export function NetworkInterfacePanel({ piId }: Props) {
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   <span className="text-blue-500">↑</span> 송신 (TX)
                 </span>
-                <span className="text-sm font-mono font-semibold text-blue-600 dark:text-blue-400">
+                <span className="min-w-[110px] text-right text-sm font-mono font-semibold text-blue-600 dark:text-blue-400 tabular-nums transition-all duration-300">
                   {formatBps(currentIface.txBps)}
                 </span>
               </div>
               <Sparkline values={txHistory} color="#3b82f6" id={`tx-${active}`} />
-              <div className="text-xs text-gray-400 dark:text-gray-500">
+              <div className="text-xs text-gray-400 dark:text-gray-500 tabular-nums transition-all duration-300">
                 누적: {formatBytes(currentIface.txBytes)} | {Math.round(currentIface.txPps)} pps
               </div>
             </div>
@@ -159,8 +159,12 @@ export function NetworkInterfacePanel({ piId }: Props) {
                     }`}
                   >
                     <td className="py-1 text-gray-700 dark:text-gray-300 font-mono">{iface.iface}</td>
-                    <td className="py-1 text-right text-green-600 dark:text-green-400 font-mono">{formatBps(iface.rxBps)}</td>
-                    <td className="py-1 text-right text-blue-600 dark:text-blue-400 font-mono">{formatBps(iface.txBps)}</td>
+                    <td className="py-1 text-right text-green-600 dark:text-green-400 font-mono tabular-nums transition-all duration-300">
+                      {formatBps(iface.rxBps)}
+                    </td>
+                    <td className="py-1 text-right text-blue-600 dark:text-blue-400 font-mono tabular-nums transition-all duration-300">
+                      {formatBps(iface.txBps)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

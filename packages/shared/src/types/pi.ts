@@ -10,6 +10,7 @@ export interface PiNode {
   authMethod: PiAuthMethod;
   sshPassword?: string | null;
   sshPrivateKey?: string | null;
+  netAgentSampleIntervalSec: number;
   status: PiStatus;
   lastSeen: number | null;
   createdAt: number;
@@ -23,4 +24,5 @@ export interface PiCreateRequest {
   authMethod?: PiAuthMethod;
   sshPassword?: string;
   sshPrivateKey?: string;
+  netAgentSampleIntervalSec?: number;
 }

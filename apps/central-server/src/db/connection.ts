@@ -48,6 +48,18 @@ function runMigrations(db: Database.Database) {
     const sql004 = readMigrationSql('004_add_ssh_private_key.sql');
     db.exec(sql004);
   }
+
+  const hasNetAgentIntervalColumn = db.prepare(
+    "SELECT 1 FROM pragma_table_info('pi_nodes') WHERE name = 'net_agent_sample_interval_sec'"
+  ).get() !== undefined;
+
+  if (!hasNetAgentIntervalColumn) {
+    const sql005 = readMigrationSql('005_add_net_agent_interval.sql');
+    db.exec(sql005);
+  }
+
+  const sql006 = readMigrationSql('006_app_settings.sql');
+  db.exec(sql006);
 }
 
 function readMigrationSql(filename: string): string {

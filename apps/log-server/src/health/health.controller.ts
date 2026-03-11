@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { getNetAgentCompatibilityInfo } from '../net-metrics/net-agent-auth';
 
 @Controller('api/health')
 export class HealthController {
@@ -10,7 +11,12 @@ export class HealthController {
     try {
       // Check Postgres via Prisma
       await this.prisma.$queryRaw`SELECT 1`;
-      return { status: 'ok', db: 'connected', version: '2.0.0-nestjs' };
+      return {
+        status: 'ok',
+        db: 'connected',
+        version: '2.0.0-nestjs',
+        compatibility: getNetAgentCompatibilityInfo(),
+      };
     } catch (e: any) {
       return { status: 'error', db: 'disconnected', error: e.message };
     }

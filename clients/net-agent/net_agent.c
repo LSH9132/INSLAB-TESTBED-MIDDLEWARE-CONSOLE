@@ -41,8 +41,10 @@ struct config {
   char spool_path[PATH_MAX];
   char state_path[PATH_MAX];
   char agent_version[64];
+  char auth_token[1024];
   int port;
   int interval_sec;
+  int protocol_version;
   long long max_spool_bytes;
 };
 
@@ -109,14 +111,17 @@ static void load_config(struct config *cfg) {
   const char *host = getenv("LOG_SERVER_HOST");
   const char *spool_path = getenv("SPOOL_PATH");
   const char *agent_version = getenv("AGENT_VERSION");
+  const char *auth_token = getenv("AUTH_TOKEN");
 
   snprintf(cfg->node_id, sizeof(cfg->node_id), "%s", node_id ? node_id : "unknown-node");
   snprintf(cfg->host, sizeof(cfg->host), "%s", host ? host : "127.0.0.1");
   snprintf(cfg->spool_path, sizeof(cfg->spool_path), "%s", spool_path ? spool_path : "/tmp/net-agent-spool.ndjson");
   snprintf(cfg->state_path, sizeof(cfg->state_path), "%s.state", cfg->spool_path);
   snprintf(cfg->agent_version, sizeof(cfg->agent_version), "%s", agent_version ? agent_version : "0.1.0");
+  snprintf(cfg->auth_token, sizeof(cfg->auth_token), "%s", auth_token ? auth_token : "");
   cfg->port = getenv("LOG_SERVER_PORT") ? atoi(getenv("LOG_SERVER_PORT")) : 5140;
   cfg->interval_sec = getenv("SAMPLE_INTERVAL_SEC") ? atoi(getenv("SAMPLE_INTERVAL_SEC")) : 5;
+  cfg->protocol_version = getenv("PROTOCOL_VERSION") ? atoi(getenv("PROTOCOL_VERSION")) : 1;
   cfg->max_spool_bytes = getenv("MAX_SPOOL_BYTES") ? atoll(getenv("MAX_SPOOL_BYTES")) : 10 * 1024 * 1024LL;
 }
 
@@ -464,9 +469,11 @@ int main(void) {
         snprintf(
           line,
           sizeof(line),
-          "{\"kind\":\"net_sample\",\"sample\":{\"nodeId\":\"%s\",\"iface\":\"%s\",\"timestamp\":%lld,"
+          "{\"kind\":\"net_sample\",\"protocolVersion\":%d,\"authToken\":\"%s\",\"sample\":{\"nodeId\":\"%s\",\"iface\":\"%s\",\"timestamp\":%lld,"
           "\"seq\":%u,\"rxBytes\":%llu,\"txBytes\":%llu,\"rxPackets\":%llu,\"txPackets\":%llu,"
           "\"rxBps\":%.3f,\"txBps\":%.3f,\"rxPps\":%.3f,\"txPps\":%.3f,\"agentVersion\":\"%s\"}}",
+          cfg.protocol_version,
+          cfg.auth_token,
           cfg.node_id,
           samples[i].iface,
           timestamp,

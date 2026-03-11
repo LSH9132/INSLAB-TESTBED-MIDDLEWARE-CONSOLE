@@ -10,6 +10,8 @@ import { netStatsRouter } from './routes/net-stats.routes.js';
 import { systemRouter } from './routes/system.routes.js';
 import { setupWebSocket } from './ws/index.js';
 import { startMonitor } from './services/pi-monitor.service.js';
+import { startNetworkMonitor } from './services/network-stats.service.js';
+import { startNetAgentClockSyncMonitor } from './services/net-agent-clock.service.js';
 import { seedStaticTopology } from './services/topology.service.js';
 
 const app = express();
@@ -34,4 +36,6 @@ setupWebSocket(server);
 server.listen(config.port, () => {
   console.log(`Central server running on port ${config.port}`);
   startMonitor();
+  startNetworkMonitor();
+  startNetAgentClockSyncMonitor();
 });

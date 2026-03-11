@@ -1,5 +1,7 @@
 'use client';
 import { StatusGrid } from '@/components/dashboard/StatusGrid';
+import { NetworkOverviewSection } from '@/components/network/NetworkOverviewSection';
+import { NetworkSettingsCard } from '@/components/system/NetworkSettingsCard';
 import { SystemStatusGrid } from '@/components/system/SystemStatusGrid';
 import { usePiStatus } from '@/hooks/usePiStatus';
 
@@ -23,6 +25,10 @@ export default function DashboardPage() {
         <SystemStatusGrid />
       </div>
 
+      <div className="mb-10">
+        <NetworkSettingsCard />
+      </div>
+
       {/* 토스 스타일 통계 카드 */}
       <h2 className="text-[20px] font-bold text-[#191F28] dark:text-gray-100 mb-4">Pi 노드 현황</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
@@ -42,6 +48,8 @@ export default function DashboardPage() {
 
       {/* Pi 노드 그리드 */}
       <StatusGrid pis={pis} />
+
+      <NetworkOverviewSection pis={pis} />
     </div>
   );
 }

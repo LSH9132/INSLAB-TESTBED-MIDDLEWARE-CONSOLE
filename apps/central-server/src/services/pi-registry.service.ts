@@ -26,8 +26,8 @@ export function createPi(req: PiCreateRequest): PiNode {
   const id = uuid();
 
   getDb().prepare(`
-    INSERT INTO pi_nodes (id, name, ip, ssh_port, ssh_user, auth_method, ssh_password, ssh_private_key)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO pi_nodes (id, name, ip, ssh_port, ssh_user, auth_method, ssh_password, ssh_private_key, net_agent_sample_interval_sec)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     req.name,
@@ -37,6 +37,7 @@ export function createPi(req: PiCreateRequest): PiNode {
     req.authMethod ?? 'key',
     req.sshPassword ?? null,
     req.sshPrivateKey ?? null,
+    req.netAgentSampleIntervalSec ?? 5,
   );
 
   return getPiById(id)!;
@@ -77,6 +78,10 @@ export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | un
     updates.push('ssh_private_key = ?');
     params.push(req.sshPrivateKey);
   }
+  if (req.netAgentSampleIntervalSec !== undefined) {
+    updates.push('net_agent_sample_interval_sec = ?');
+    params.push(req.netAgentSampleIntervalSec);
+  }
 
   if (updates.length > 0) {
     params.push(id);
@@ -105,6 +110,7 @@ function rowToPiNode(row: any): PiNode {
     authMethod: (row.auth_method ?? 'key') as PiAuthMethod,
     sshPassword: row.ssh_password ?? null,
     sshPrivateKey: row.ssh_private_key ?? null,
+    netAgentSampleIntervalSec: row.net_agent_sample_interval_sec ?? 5,
     status: row.status,
     lastSeen: row.last_seen,
     createdAt: row.created_at,

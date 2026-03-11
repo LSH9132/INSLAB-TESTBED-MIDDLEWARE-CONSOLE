@@ -55,6 +55,16 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                   Pi 관리
                 </Link>
                 <Link
+                  href="/network"
+                  className={`text-[15px] font-medium transition-colors ${
+                    pathname.startsWith('/network')
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-[#4E5968] dark:text-gray-400 hover:text-[#191F28] dark:hover:text-gray-200'
+                  }`}
+                >
+                  네트워크
+                </Link>
+                <Link
                   href="/topology"
                   className={`text-[15px] font-medium transition-colors ${
                     pathname.startsWith('/topology')
