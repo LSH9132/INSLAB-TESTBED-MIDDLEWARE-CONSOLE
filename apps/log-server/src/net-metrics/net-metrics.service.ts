@@ -26,6 +26,7 @@ export class NetMetricsService {
         node_id,
         iface,
         timestamp,
+        received_at,
         rx_bytes,
         tx_bytes,
         rx_packets,
@@ -36,15 +37,17 @@ export class NetMetricsService {
         tx_pps
       FROM network_interface_samples
       WHERE node_id = ${nodeId}
-      ORDER BY iface, timestamp DESC
+      ORDER BY iface, received_at DESC, timestamp DESC
     `);
 
     const interfaces = rows.map(row => this.toNetworkInterfaceStat(row));
     const timestamp = interfaces.reduce((latest, item) => Math.max(latest, item.timestamp), 0);
+    const receivedAt = rows.reduce((latest, row) => Math.max(latest, this.toUnixSeconds(row.received_at)), 0);
 
     return {
       piId: nodeId,
       timestamp,
+      receivedAt,
       interfaces,
     };
   }
@@ -69,7 +72,7 @@ export class NetMetricsService {
             tx_pps
           FROM network_interface_samples
           WHERE node_id = ${nodeId} AND iface = ${iface}
-          ORDER BY timestamp DESC
+          ORDER BY received_at DESC, timestamp DESC
           LIMIT ${limit}
         `)
       : await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
@@ -86,7 +89,7 @@ export class NetMetricsService {
             tx_pps
           FROM network_interface_samples
           WHERE node_id = ${nodeId}
-          ORDER BY timestamp DESC
+          ORDER BY received_at DESC, timestamp DESC
           LIMIT ${limit}
         `);
 
@@ -112,9 +115,7 @@ export class NetMetricsService {
   }
 
   private toNetworkInterfaceStat(row: Record<string, unknown>): NetworkInterfaceStat {
-    const timestamp = row.timestamp instanceof Date
-      ? Math.floor(row.timestamp.getTime() / 1000)
-      : Math.floor(new Date(String(row.timestamp)).getTime() / 1000);
+    const timestamp = this.toUnixSeconds(row.timestamp);
 
     return {
       iface: String(row.iface),
@@ -128,5 +129,13 @@ export class NetMetricsService {
       txPps: Number(row.tx_pps),
       timestamp,
     };
+  }
+
+  private toUnixSeconds(value: unknown): number {
+    if (value instanceof Date) {
+      return Math.floor(value.getTime() / 1000);
+    }
+
+    return Math.floor(new Date(String(value)).getTime() / 1000);
   }
 }

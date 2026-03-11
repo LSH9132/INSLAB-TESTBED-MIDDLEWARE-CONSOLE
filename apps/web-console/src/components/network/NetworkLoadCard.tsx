@@ -15,7 +15,7 @@ function formatBps(bps: number): string {
 
 function Sparkline({ values, color }: { values: number[]; color: string }) {
   if (values.length < 2) {
-    return <div className="h-6 w-16 rounded bg-gray-100 dark:bg-gray-800" />;
+    return <div className="h-6 w-16 rounded bg-gray-100 dark:bg-gray-800 transition-opacity duration-300" />;
   }
 
   const max = Math.max(...values, 1);
@@ -28,14 +28,14 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
     .join(' ');
 
   return (
-    <svg viewBox="0 0 64 24" className="h-6 w-16">
+    <svg viewBox="0 0 64 24" className="h-6 w-16 transition-opacity duration-300">
       <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
 
 export function NetworkLoadCard({ piId, piName }: Props) {
-  const { latest, history, loading } = useNetStats({ piId, historyLimit: 10 });
+  const { latest, history, loading, error } = useNetStats({ piId, historyLimit: 10 });
 
   if (loading) {
     return (
@@ -46,10 +46,18 @@ export function NetworkLoadCard({ piId, piName }: Props) {
     );
   }
 
+  if (error || !latest) {
+    return (
+      <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+        수집 없음
+      </div>
+    );
+  }
+
   const totalRxBps =
-    latest?.interfaces.reduce((sum: number, stat: { rxBps: number }) => sum + stat.rxBps, 0) ?? 0;
+    latest.interfaces.reduce((sum: number, stat: { rxBps: number }) => sum + stat.rxBps, 0);
   const totalTxBps =
-    latest?.interfaces.reduce((sum: number, stat: { txBps: number }) => sum + stat.txBps, 0) ?? 0;
+    latest.interfaces.reduce((sum: number, stat: { txBps: number }) => sum + stat.txBps, 0);
 
   const sampleLength = Math.max(0, ...Object.values(history).map(points => points.length));
   const rxSeries = Array.from({ length: sampleLength }, (_, index) =>
@@ -62,11 +70,15 @@ export function NetworkLoadCard({ piId, piName }: Props) {
   return (
     <div className="mt-2 space-y-2 text-xs font-mono" title={`${piName} network load`}>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-green-600 dark:text-green-400">↓ {formatBps(totalRxBps)}</span>
+        <span className="min-w-[92px] text-green-600 dark:text-green-400 tabular-nums transition-all duration-300">
+          ↓ {formatBps(totalRxBps)}
+        </span>
         <Sparkline values={rxSeries} color="#22c55e" />
       </div>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-blue-600 dark:text-blue-400">↑ {formatBps(totalTxBps)}</span>
+        <span className="min-w-[92px] text-blue-600 dark:text-blue-400 tabular-nums transition-all duration-300">
+          ↑ {formatBps(totalTxBps)}
+        </span>
         <Sparkline values={txSeries} color="#3b82f6" />
       </div>
     </div>

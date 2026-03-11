@@ -10,3 +10,8 @@ export interface ServiceStatus {
   message?: string;
   lastChecked?: number;
 }
+
+export interface NetworkCollectionSettings {
+  pollIntervalSec: number;
+  freshnessSec: number;
+}

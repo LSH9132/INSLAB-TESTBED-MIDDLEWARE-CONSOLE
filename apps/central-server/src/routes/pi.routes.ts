@@ -1,7 +1,19 @@
 import { Router } from 'express';
 import { getAllPis, getPiById, createPi, deletePi, checkDuplicateName, checkDuplicateIp, updatePi } from '../services/pi-registry.service.js';
+import { buildNetAgentConfig } from '../services/net-agent-config.service.js';
+import { getNetAgentRemoteStatus, runNetAgentRemoteAction } from '../services/net-agent-remote.service.js';
 
 export const piRouter = Router();
+type PiNetAgentAction = 'install' | 'configure' | 'restart' | 'sync-time' | 'uninstall';
+
+function parseSampleIntervalSec(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3600) {
+    return NaN;
+  }
+  return parsed;
+}
 
 piRouter.get('/', (_req, res) => {
   res.json(getAllPis());
@@ -13,11 +25,88 @@ piRouter.get('/:id', (req, res) => {
   res.json(pi);
 });
 
+piRouter.get('/:id/net-agent-config', async (req, res) => {
+  const pi = getPiById(req.params.id);
+  if (!pi) return res.status(404).json({ error: 'Not found' });
+
+  try {
+    const config = await buildNetAgentConfig(pi);
+    res.json(config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to build net-agent config';
+    res.status(503).json({ error: message });
+  }
+});
+
+piRouter.get('/:id/net-agent/status', async (req, res) => {
+  const pi = getPiById(req.params.id);
+  if (!pi) return res.status(404).json({ error: 'Not found' });
+
+  try {
+    const status = await getNetAgentRemoteStatus(pi);
+    res.json(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to inspect net-agent';
+    res.status(503).json({ error: message });
+  }
+});
+
+piRouter.put('/:id/net-agent/settings', (req, res) => {
+  const pi = getPiById(req.params.id);
+  if (!pi) return res.status(404).json({ error: 'Not found' });
+
+  const sampleIntervalSec = parseSampleIntervalSec(req.body?.sampleIntervalSec);
+  if (sampleIntervalSec === undefined || Number.isNaN(sampleIntervalSec)) {
+    return res.status(400).json({ error: 'sampleIntervalSec must be an integer between 1 and 3600' });
+  }
+
+  const updatedPi = updatePi(req.params.id, { netAgentSampleIntervalSec: sampleIntervalSec });
+  res.json(updatedPi);
+});
+
+async function handleNetAgentAction(req: any, res: any, action: PiNetAgentAction) {
+  const pi = getPiById(req.params.id);
+  if (!pi) return res.status(404).json({ error: 'Not found' });
+
+  try {
+    const result = await runNetAgentRemoteAction(pi, action);
+    res.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Failed to ${action} net-agent`;
+    res.status(503).json({ error: message });
+  }
+}
+
+piRouter.post('/:id/net-agent/install', (req, res) => {
+  handleNetAgentAction(req, res, 'install');
+});
+
+piRouter.post('/:id/net-agent/configure', (req, res) => {
+  handleNetAgentAction(req, res, 'configure');
+});
+
+piRouter.post('/:id/net-agent/restart', (req, res) => {
+  handleNetAgentAction(req, res, 'restart');
+});
+
+piRouter.post('/:id/net-agent/sync-time', (req, res) => {
+  handleNetAgentAction(req, res, 'sync-time');
+});
+
+piRouter.delete('/:id/net-agent', (req, res) => {
+  handleNetAgentAction(req, res, 'uninstall');
+});
+
 piRouter.post('/', (req, res) => {
-  const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey } = req.body;
+  const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey, netAgentSampleIntervalSec } = req.body;
+  const sampleIntervalSec = parseSampleIntervalSec(netAgentSampleIntervalSec);
 
   if (!name || !ip) {
     return res.status(400).json({ error: 'name, ip required' });
+  }
+
+  if (netAgentSampleIntervalSec !== undefined && Number.isNaN(sampleIntervalSec)) {
+    return res.status(400).json({ error: 'netAgentSampleIntervalSec must be an integer between 1 and 3600' });
   }
 
   if (authMethod === 'password' && !sshPassword) {
@@ -35,16 +124,30 @@ piRouter.post('/', (req, res) => {
     return res.status(409).json({ error: '이미 등록된 IP 주소입니다' });
   }
 
-  const pi = createPi({ name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey });
+  const pi = createPi({
+    name,
+    ip,
+    sshPort,
+    sshUser,
+    authMethod,
+    sshPassword,
+    sshPrivateKey,
+    netAgentSampleIntervalSec: sampleIntervalSec,
+  });
   res.status(201).json(pi);
 });
 
 piRouter.put('/:id', (req, res) => {
   const { id } = req.params;
-  const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey } = req.body;
+  const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey, netAgentSampleIntervalSec } = req.body;
+  const sampleIntervalSec = parseSampleIntervalSec(netAgentSampleIntervalSec);
 
   const existingPi = getPiById(id);
   if (!existingPi) return res.status(404).json({ error: 'Not found' });
+
+  if (netAgentSampleIntervalSec !== undefined && Number.isNaN(sampleIntervalSec)) {
+    return res.status(400).json({ error: 'netAgentSampleIntervalSec must be an integer between 1 and 3600' });
+  }
 
   if (name && name !== existingPi.name && checkDuplicateName(name)) {
     return res.status(409).json({ error: '이미 등록된 이름입니다' });
@@ -61,7 +164,16 @@ piRouter.put('/:id', (req, res) => {
     }
   }
 
-  const updatedPi = updatePi(id, { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey });
+  const updatedPi = updatePi(id, {
+    name,
+    ip,
+    sshPort,
+    sshUser,
+    authMethod,
+    sshPassword,
+    sshPrivateKey,
+    netAgentSampleIntervalSec: sampleIntervalSec,
+  });
   res.json(updatedPi);
 });
 

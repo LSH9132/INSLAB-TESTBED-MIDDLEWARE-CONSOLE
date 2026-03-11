@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import * as net from 'net';
 import Redis from 'ioredis';
 import type { NetMetricIngestEnvelope, NetMetricSample } from '@inslab/shared';
+import { isSupportedProtocolVersion, verifyNetAgentToken } from '../net-metrics/net-agent-auth';
 
 @Injectable()
 export class TcpService implements OnModuleInit, OnModuleDestroy {
@@ -56,6 +57,16 @@ export class TcpService implements OnModuleInit, OnModuleDestroy {
     try {
       const parsed = JSON.parse(line);
       if (this.isNetMetricEnvelope(parsed)) {
+        if (!isSupportedProtocolVersion(parsed.protocolVersion)) {
+          socket.write('ERR version_mismatch\n');
+          return;
+        }
+
+        if (!verifyNetAgentToken(parsed.authToken, parsed.sample.nodeId, parsed.protocolVersion)) {
+          socket.write('ERR unauthorized\n');
+          return;
+        }
+
         await this.redis.lpush('net-metrics:ingest', JSON.stringify(parsed.sample));
         socket.write('ACK\n');
         return;
@@ -85,6 +96,8 @@ export class TcpService implements OnModuleInit, OnModuleDestroy {
       value &&
         typeof value === 'object' &&
         (value as NetMetricIngestEnvelope).kind === 'net_sample' &&
+        typeof (value as NetMetricIngestEnvelope).protocolVersion === 'number' &&
+        typeof (value as NetMetricIngestEnvelope).authToken === 'string' &&
         this.isNetMetricSample((value as NetMetricIngestEnvelope).sample),
     );
   }

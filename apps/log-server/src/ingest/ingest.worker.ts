@@ -69,12 +69,12 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
   private async flushLogs(logs: any[]) {
     try {
       const data = logs.map(log => ({
-        timestamp: new Date(log.timestamp),
+        timestamp: this.normalizeLogTimestamp(log.timestamp),
         sourcePi: log.sourcePi || log.piId || 'unknown',
         destPi: log.destPi || null,
         seqNum: log.seqNum ? Number(log.seqNum) : null,
         logType: log.type || log.logType || null,
-        payload: JSON.stringify(log.payload || log.data || log),
+        payload: this.normalizeLogPayload(log),
       }));
 
       await this.prisma.log.createMany({
@@ -85,6 +85,39 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
     } catch (err: any) {
       this.logger.error(`Failed to flush batch to DB: ${err.message}`);
       // In a real production system, you might want to push these back to a Dead Letter Queue (DLQ)
+    }
+  }
+
+  private normalizeLogTimestamp(raw: unknown): Date {
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return new Date(raw);
+    }
+
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      const numeric = Number(raw);
+      if (Number.isFinite(numeric)) {
+        return new Date(numeric);
+      }
+
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return new Date();
+  }
+
+  private normalizeLogPayload(log: Record<string, unknown>): string {
+    const candidate = log.payload ?? log.data ?? log;
+    if (typeof candidate === 'string') {
+      return candidate;
+    }
+
+    try {
+      return JSON.stringify(candidate);
+    } catch {
+      return String(candidate);
     }
   }
 

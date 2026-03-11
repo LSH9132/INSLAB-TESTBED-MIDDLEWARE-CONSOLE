@@ -14,6 +14,7 @@ export interface NetworkInterfaceStat {
 export interface NetworkStatSnapshot {
   piId: string;
   timestamp: number;
+  receivedAt?: number;
   interfaces: NetworkInterfaceStat[];
 }
 
@@ -40,5 +41,28 @@ export interface NetMetricSample {
 
 export interface NetMetricIngestEnvelope {
   kind: 'net_sample';
+  protocolVersion: number;
+  authToken: string;
   sample: NetMetricSample;
+}
+
+export interface NetAgentCompatibilityInfo {
+  protocolVersion: number;
+  minAgentVersion: string;
+  recommendedAgentVersion: string;
+  tcpPort: number;
+  issuedAt: number;
+}
+
+export interface NetAgentConfigResponse {
+  nodeId: string;
+  protocolVersion: number;
+  minAgentVersion: string;
+  recommendedAgentVersion: string;
+  logServerHost: string;
+  logServerPort: number;
+  sampleIntervalSec: number;
+  tokenExpiresAt: number;
+  authToken: string;
+  envFileContent: string;
 }

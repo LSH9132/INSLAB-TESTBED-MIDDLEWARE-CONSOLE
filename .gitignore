@@ -2,13 +2,18 @@ node_modules/
 dist/
 .next/
 *.sqlite
+*.db
 *.sqlite3
 *.sqlite-shm
 *.sqlite-wal
+apps/central-server/data/
+clients/net-agent/net-agent
 .env
 .env.local
 .turbo
 coverage/
+data/postgres/*
+!data/postgres/.gitkeep
 
 # E2E Test
 apps/web-console/e2e/
