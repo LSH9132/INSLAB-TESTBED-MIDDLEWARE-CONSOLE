@@ -1,19 +1,47 @@
 services:
+  log-db:
+    image: postgres:15-alpine
+    container_name: inslab-log-db
+    environment:
+      POSTGRES_USER: inslab
+      POSTGRES_PASSWORD: inslab_password
+      POSTGRES_DB: inslab_logs
+    ports:
+      - '5432:5432'
+    volumes:
+      - ../../data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  log-redis:
+    image: redis:7-alpine
+    container_name: inslab-log-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - '6379:6379'
+    volumes:
+      - log-redis-data:/data
+    restart: unless-stopped
+
   log-server:
     build:
       context: ../../
       dockerfile: apps/log-server/Dockerfile
+    environment:
+      HTTP_PORT: 3002
+      TCP_PORT: 5140
+      DATABASE_URL: postgresql://inslab:inslab_password@log-db:5432/inslab_logs
+      REDIS_URL: redis://log-redis:6379
+      NET_AGENT_SHARED_SECRET: inslab-net-agent-secret
+      PUBLIC_LOG_SERVER_TCP_PORT: 5140
+      RECOMMENDED_NET_AGENT_VERSION: 0.2.0
+      MIN_NET_AGENT_VERSION: 0.2.0
     ports:
-      - "5140:5140"
-      - "3002:3002"
-    volumes:
-      - log-data:/app/data
-    networks:
-      - log-net
+      - '3002:3002'
+      - '5140:5140'
+    depends_on:
+      - log-db
+      - log-redis
     restart: unless-stopped
 
 volumes:
-  log-data:
-
-networks:
-  log-net:
+  log-redis-data:

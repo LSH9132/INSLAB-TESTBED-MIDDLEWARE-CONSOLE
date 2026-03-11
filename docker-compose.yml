@@ -1,16 +1,40 @@
 services:
+  log-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: inslab
+      POSTGRES_PASSWORD: inslab_password
+      POSTGRES_DB: inslab_logs
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  log-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - log-redis-data:/data
+    restart: unless-stopped
+
   central-server:
     build:
       context: .
       dockerfile: apps/central-server/Dockerfile
     ports:
-      - "3001:3001"
+      - "3101:3001"
     volumes:
       - central-data:/app/data
       - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
     environment:
       - LOG_SERVER_URL=http://log-server:3002
       - SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa
+      - NET_AGENT_SHARED_SECRET=inslab-net-agent-secret
+      - PUBLIC_LOG_SERVER_HOST=10.10.0.19
+      - PUBLIC_LOG_SERVER_TCP_PORT=6140
+      - RECOMMENDED_NET_AGENT_VERSION=0.2.0
+      - MIN_NET_AGENT_VERSION=0.2.0
     depends_on:
       - log-server
     restart: unless-stopped
@@ -20,9 +44,9 @@ services:
       context: .
       dockerfile: apps/web-console/Dockerfile
       args:
-        - NEXT_PUBLIC_CENTRAL_SERVER_URL=http://localhost:3001
+        - NEXT_PUBLIC_CENTRAL_SERVER_URL=http://localhost:3101
     ports:
-      - "3000:3000"
+      - "3100:3000"
     environment:
       - CENTRAL_SERVER_URL=http://central-server:3001
     depends_on:
@@ -33,13 +57,23 @@ services:
     build:
       context: .
       dockerfile: apps/log-server/Dockerfile
+    environment:
+      - HTTP_PORT=3002
+      - TCP_PORT=5140
+      - DATABASE_URL=postgresql://inslab:inslab_password@log-db:5432/inslab_logs
+      - REDIS_URL=redis://log-redis:6379
+      - NET_AGENT_SHARED_SECRET=inslab-net-agent-secret
+      - PUBLIC_LOG_SERVER_TCP_PORT=6140
+      - RECOMMENDED_NET_AGENT_VERSION=0.2.0
+      - MIN_NET_AGENT_VERSION=0.2.0
     ports:
-      - "5140:5140"
-      - "3002:3002"
-    volumes:
-      - log-data:/app/data
+      - "6140:5140"
+      - "3102:3002"
+    depends_on:
+      - log-db
+      - log-redis
     restart: unless-stopped
 
 volumes:
   central-data:
-  log-data:
+  log-redis-data:

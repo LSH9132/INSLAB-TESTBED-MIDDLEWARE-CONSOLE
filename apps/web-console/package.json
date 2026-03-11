@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && CENTRAL_SERVER_URL=http://localhost:3101 NEXT_PUBLIC_CENTRAL_SERVER_URL=http://localhost:3101 next dev -H localhost -p 3000",
     "build": "next build",
     "start": "next start"
   },
@@ -12,6 +12,7 @@
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "d3": "^7.9.0",
+    "lucide-react": "^0.577.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

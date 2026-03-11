@@ -1,22 +1,27 @@
 'use client';
 import Link from 'next/link';
 import type { PiNode } from '@inslab/shared';
+import { NetworkLoadCard } from '@/components/network/NetworkLoadCard';
 
 export function PiStatusCard({ pi }: { pi: PiNode }) {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'bg-[#0BC27C]';
-      case 'offline': return 'bg-[#F04452]';
-      default: return 'bg-[#8B95A1]';
+      case 'online':
+        return 'bg-[#0BC27C]';
+      case 'offline':
+        return 'bg-[#F04452]';
+      default:
+        return 'bg-[#8B95A1]';
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = status === 'online'
-      ? 'bg-[#E7F4EF] text-[#0BC27C] border-[#0BC27C] dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
-      : status === 'offline'
-        ? 'bg-[#FEF1F2] text-[#F04452] border-[#F04452] dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
-        : 'bg-[#F2F4F6] text-[#8B95A1] border-[#D1D6DB] dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
+    const styles =
+      status === 'online'
+        ? 'bg-[#E7F4EF] text-[#0BC27C] border-[#0BC27C] dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+        : status === 'offline'
+          ? 'bg-[#FEF1F2] text-[#F04452] border-[#F04452] dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+          : 'bg-[#F2F4F6] text-[#8B95A1] border-[#D1D6DB] dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
 
     return (
       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium border ${styles}`}>
@@ -51,6 +56,13 @@ export function PiStatusCard({ pi }: { pi: PiNode }) {
           </span>
         </div>
       </div>
+
+      {pi.status === 'online' && (
+        <div className="border-t border-[#F2F4F6] dark:border-gray-700 pt-3 mb-3">
+          <span className="text-[#8B95A1] dark:text-gray-500 text-[12px] font-medium block mb-1">네트워크 부하</span>
+          <NetworkLoadCard piId={pi.id} piName={pi.name} />
+        </div>
+      )}
 
       <div className="flex gap-2">
         <Link
