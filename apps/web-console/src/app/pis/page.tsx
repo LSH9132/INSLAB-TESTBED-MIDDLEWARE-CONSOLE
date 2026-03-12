@@ -104,8 +104,8 @@ export default function PiManagementPage() {
       setForm(defaultForm);
       setValidationErrors({});
       load();
-    } catch (err: any) {
-      setError(err.message || 'Pi 추가에 실패했습니다');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Pi 추가에 실패했습니다');
     }
   };
 
@@ -295,7 +295,7 @@ export default function PiManagementPage() {
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border bg-[#F0F6FF] text-[#3182F6] border-[#3182F6]/30 dark:bg-blue-900/20 dark:text-blue-400 w-fit">
                             🔑 SSH 키
                           </span>
-                          {pi.sshPrivateKey ? (
+                          {pi.hasSshPrivateKey ? (
                             <span className="text-[11px] text-[#0BC27C] dark:text-green-400">✓ 개인키 등록됨</span>
                           ) : (
                             <span className="text-[11px] text-[#F04452] dark:text-red-400">⚠ 개인키 없음</span>

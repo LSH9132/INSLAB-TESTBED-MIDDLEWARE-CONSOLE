@@ -1,9 +1,9 @@
 import type WebSocket from 'ws';
-import { getPiById } from '../services/pi-registry.service.js';
+import { getStoredPiById } from '../services/pi-registry.service.js';
 import { attachTerminal } from '../services/ssh-proxy.service.js';
 
 export function handleTerminalConnection(ws: WebSocket, piId: string) {
-  const pi = getPiById(piId);
+  const pi = getStoredPiById(piId);
   if (!pi) {
     ws.send(`\r\nPi not found: ${piId}\r\n`);
     ws.close();

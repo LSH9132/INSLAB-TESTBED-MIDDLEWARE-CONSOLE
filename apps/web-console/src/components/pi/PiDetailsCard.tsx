@@ -128,7 +128,7 @@ export function PiDetailsCard({
               {pi.authMethod === 'key' ? '🔑 SSH 키' : '🔒 비밀번호'}
             </span>
             {pi.authMethod === 'key' && (
-              pi.sshPrivateKey
+              pi.hasSshPrivateKey
                 ? <span className="text-[12px] text-[#0BC27C]">✓ 개인키 등록됨</span>
                 : <span className="text-[12px] text-[#F04452]">⚠ 개인키 없음</span>
             )}

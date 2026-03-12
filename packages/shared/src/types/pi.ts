@@ -8,12 +8,16 @@ export interface PiNode {
   sshPort: number;
   sshUser: string;
   authMethod: PiAuthMethod;
-  sshPassword?: string | null;
-  sshPrivateKey?: string | null;
+  hasSshPrivateKey: boolean;
   netAgentSampleIntervalSec: number;
   status: PiStatus;
   lastSeen: number | null;
   createdAt: number;
+}
+
+export interface StoredPiNode extends PiNode {
+  sshPassword?: string | null;
+  sshPrivateKey?: string | null;
 }
 
 export interface PiCreateRequest {
