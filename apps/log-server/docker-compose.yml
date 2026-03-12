@@ -4,7 +4,7 @@ services:
     container_name: inslab-log-db
     environment:
       POSTGRES_USER: inslab
-      POSTGRES_PASSWORD: inslab_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres-password}
       POSTGRES_DB: inslab_logs
     ports:
       - '5432:5432'
@@ -29,9 +29,9 @@ services:
     environment:
       HTTP_PORT: 3002
       TCP_PORT: 5140
-      DATABASE_URL: postgresql://inslab:inslab_password@log-db:5432/inslab_logs
+      DATABASE_URL: postgresql://inslab:${POSTGRES_PASSWORD:-change-me-postgres-password}@log-db:5432/inslab_logs
       REDIS_URL: redis://log-redis:6379
-      NET_AGENT_SHARED_SECRET: inslab-net-agent-secret
+      NET_AGENT_SHARED_SECRET: ${NET_AGENT_SHARED_SECRET:-change-me-net-agent-secret}
       PUBLIC_LOG_SERVER_TCP_PORT: 5140
       RECOMMENDED_NET_AGENT_VERSION: 0.2.0
       MIN_NET_AGENT_VERSION: 0.2.0

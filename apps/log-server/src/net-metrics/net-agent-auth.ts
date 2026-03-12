@@ -9,7 +9,7 @@ interface NetAgentTokenPayload {
   expiresAt: number;
 }
 
-const SHARED_SECRET = process.env.NET_AGENT_SHARED_SECRET || 'inslab-net-agent-secret';
+const SHARED_SECRET = process.env.NET_AGENT_SHARED_SECRET || 'change-me-net-agent-secret';
 const PROTOCOL_VERSION = Number(process.env.NET_AGENT_PROTOCOL_VERSION || NET_AGENT_PROTOCOL_VERSION);
 const TCP_PORT = Number(process.env.PUBLIC_LOG_SERVER_TCP_PORT || process.env.TCP_PORT || LOG_SERVER_TCP_PORT);
 const MIN_AGENT_VERSION = process.env.MIN_NET_AGENT_VERSION || '0.2.0';

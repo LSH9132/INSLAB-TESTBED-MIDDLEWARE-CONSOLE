@@ -3,7 +3,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: inslab
-      POSTGRES_PASSWORD: inslab_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres-password}
       POSTGRES_DB: inslab_logs
     ports:
       - "5432:5432"
@@ -26,13 +26,13 @@ services:
       - "3101:3001"
     volumes:
       - central-data:/app/data
-      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      - ${SSH_PRIVATE_KEY_PATH_HOST:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
     environment:
       - LOG_SERVER_URL=http://log-server:3002
       - SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa
-      - NET_AGENT_SHARED_SECRET=inslab-net-agent-secret
-      - PUBLIC_LOG_SERVER_HOST=10.10.0.19
-      - PUBLIC_LOG_SERVER_TCP_PORT=6140
+      - NET_AGENT_SHARED_SECRET=${NET_AGENT_SHARED_SECRET:-change-me-net-agent-secret}
+      - PUBLIC_LOG_SERVER_HOST=${PUBLIC_LOG_SERVER_HOST:-127.0.0.1}
+      - PUBLIC_LOG_SERVER_TCP_PORT=${PUBLIC_LOG_SERVER_TCP_PORT:-6140}
       - RECOMMENDED_NET_AGENT_VERSION=0.2.0
       - MIN_NET_AGENT_VERSION=0.2.0
     depends_on:
@@ -60,10 +60,10 @@ services:
     environment:
       - HTTP_PORT=3002
       - TCP_PORT=5140
-      - DATABASE_URL=postgresql://inslab:inslab_password@log-db:5432/inslab_logs
+      - DATABASE_URL=postgresql://inslab:${POSTGRES_PASSWORD:-change-me-postgres-password}@log-db:5432/inslab_logs
       - REDIS_URL=redis://log-redis:6379
-      - NET_AGENT_SHARED_SECRET=inslab-net-agent-secret
-      - PUBLIC_LOG_SERVER_TCP_PORT=6140
+      - NET_AGENT_SHARED_SECRET=${NET_AGENT_SHARED_SECRET:-change-me-net-agent-secret}
+      - PUBLIC_LOG_SERVER_TCP_PORT=${PUBLIC_LOG_SERVER_TCP_PORT:-6140}
       - RECOMMENDED_NET_AGENT_VERSION=0.2.0
       - MIN_NET_AGENT_VERSION=0.2.0
     ports:

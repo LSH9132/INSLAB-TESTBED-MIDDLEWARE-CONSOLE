@@ -5,6 +5,6 @@ export default defineConfig({
   datasource: {
     url:
       process.env.DATABASE_URL ??
-      'postgresql://inslab:inslab_password@localhost:5432/inslab_logs',
+      'postgresql://inslab:change-me-postgres-password@localhost:5432/inslab_logs',
   },
 });

@@ -6,7 +6,7 @@ export const config = {
   dbPath: process.env.DB_PATH || './data/central.sqlite',
   sshPrivateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '~/.ssh/id_rsa',
   logServerUrl: process.env.LOG_SERVER_URL || 'http://localhost:3033',
-  netAgentSharedSecret: process.env.NET_AGENT_SHARED_SECRET || 'inslab-net-agent-secret',
+  netAgentSharedSecret: process.env.NET_AGENT_SHARED_SECRET || 'change-me-net-agent-secret',
   netAgentTokenTtlSec: parseInt(process.env.NET_AGENT_TOKEN_TTL_SEC || '604800', 10),
   publicLogServerHost: process.env.PUBLIC_LOG_SERVER_HOST || '127.0.0.1',
   publicLogServerTcpPort: parseInt(process.env.PUBLIC_LOG_SERVER_TCP_PORT || String(LOG_SERVER_TCP_PORT), 10),
