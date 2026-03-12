@@ -1,9 +1,17 @@
 import { Client } from 'ssh2';
-import { readFileSync } from 'fs';
-import { config } from '../config.js';
+import type { ConnectConfig } from 'ssh2';
 import type WebSocket from 'ws';
+import type { PiAuthMethod } from '@inslab/shared';
 
-export function attachTerminal(ws: WebSocket, host: string, port: number, username: string) {
+export function attachTerminal(
+  ws: WebSocket,
+  host: string,
+  port: number,
+  username: string,
+  authMethod: PiAuthMethod = 'key',
+  sshPassword?: string | null,
+  sshPrivateKey?: string | null,
+) {
   const ssh = new Client();
 
   ssh.on('ready', () => {
@@ -48,11 +56,27 @@ export function attachTerminal(ws: WebSocket, host: string, port: number, userna
     ws.close();
   });
 
-  const keyPath = config.sshPrivateKeyPath.replace('~', process.env.HOME || '');
-  ssh.connect({
-    host,
-    port,
-    username,
-    privateKey: readFileSync(keyPath),
-  });
+  try {
+    const connectOptions: ConnectConfig = {
+      host,
+      port,
+      username,
+    };
+
+    if (authMethod === 'password' && sshPassword) {
+      connectOptions.password = sshPassword;
+    } else if (sshPrivateKey) {
+      connectOptions.privateKey = sshPrivateKey;
+    } else {
+      ws.send(`\r\nSSH connection error: No private key configured for this Pi.\r\n`);
+      ws.close();
+      return;
+    }
+
+    ssh.connect(connectOptions);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    ws.send(`\r\nFailed to start SSH connection: ${message}\r\n`);
+    ws.close();
+  }
 }

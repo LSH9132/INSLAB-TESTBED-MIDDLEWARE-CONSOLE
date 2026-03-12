@@ -1,5 +1,6 @@
+import { ThemeProvider } from '@/components/providers/theme-provider';
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { ClientLayout } from '@/components/layout/client-layout';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,16 +10,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
-      <body className="bg-gray-950 text-gray-100 min-h-screen">
-        <nav className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-8">
-          <h1 className="text-lg font-bold">INSLAB Testbed</h1>
-          <Link href="/" className="text-gray-400 hover:text-white text-sm">Dashboard</Link>
-          <Link href="/pis" className="text-gray-400 hover:text-white text-sm">Pi Management</Link>
-          <Link href="/topology" className="text-gray-400 hover:text-white text-sm">Topology</Link>
-          <Link href="/logs" className="text-gray-400 hover:text-white text-sm">Logs</Link>
-        </nav>
-        <main className="p-6">{children}</main>
+    <html lang="ko" suppressHydrationWarning>
+      <body className="bg-[#F9FAFB] dark:bg-gray-950 text-[#191F28] dark:text-gray-100 min-h-screen transition-colors duration-300">
+        <ThemeProvider>
+          <ClientLayout>
+            {children}
+          </ClientLayout>
+        </ThemeProvider>
       </body>
     </html>
   );

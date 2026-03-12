@@ -3,20 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && CENTRAL_SERVER_URL=http://localhost:3101 NEXT_PUBLIC_CENTRAL_SERVER_URL=http://localhost:3101 node dev-server.js",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
     "@inslab/shared": "workspace:*",
-    "@xterm/xterm": "^5.5.0",
     "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "d3": "^7.9.0",
+    "lucide-react": "^0.577.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/d3": "^7.4.3",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",

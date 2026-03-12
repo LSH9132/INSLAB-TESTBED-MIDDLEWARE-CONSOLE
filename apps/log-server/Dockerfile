@@ -2,21 +2,26 @@ FROM node:20-slim AS base
 RUN corepack enable
 
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml tsconfig.base.json ./
-COPY packages/shared/ packages/shared/
-COPY apps/log-server/ apps/log-server/
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/log-server/package.json apps/log-server/
 
 RUN pnpm install --frozen-lockfile
+
+COPY packages/shared/ packages/shared/
+COPY apps/log-server/ apps/log-server/
 RUN pnpm --filter @inslab/shared build
-RUN pnpm --filter log-server build
+RUN pnpm --filter @inslab/log-server build
+
+RUN pnpm --filter @inslab/log-server deploy --prod --legacy /prod
+RUN cp -r /app/apps/log-server/dist /prod/dist \
+    && cp -r /app/packages/shared/dist /prod/node_modules/@inslab/shared/dist \
+    && cp -r /app/apps/log-server/prisma /prod/prisma
 
 FROM node:20-slim
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=base /app/apps/log-server/dist ./dist
-COPY --from=base /app/apps/log-server/package.json ./
-COPY --from=base /app/apps/log-server/src/db/migrations ./dist/db/migrations
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/packages/shared/dist ./node_modules/@inslab/shared/dist
+COPY --from=base /prod .
 
 EXPOSE 5140 3002
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push && node dist/main.js"]
