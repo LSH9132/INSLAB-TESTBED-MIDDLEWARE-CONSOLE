@@ -3,6 +3,8 @@ import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import type { NetMetricSample } from '@inslab/shared';
 
+type IngestLogRecord = Record<string, unknown>;
+
 @Injectable()
 export class IngestWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(IngestWorker.name);
@@ -12,6 +14,10 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
   private batchTimeoutMs = 1000; // 1 second
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'unknown error';
+  }
 
   async onModuleInit() {
     this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
@@ -28,7 +34,7 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
   private async startWorkerLoop() {
     while (this.isRunning) {
       try {
-        const logBatch: any[] = [];
+        const logBatch: IngestLogRecord[] = [];
         const metricBatch: NetMetricSample[] = [];
         const startTime = Date.now();
 
@@ -39,13 +45,15 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
           if (result) {
             const [queue, data] = result;
             try {
-              const parsed = JSON.parse(data);
+              const parsed = JSON.parse(data) as unknown;
               if (queue === 'logs:ingest') {
-                logBatch.push(parsed);
+                if (parsed && typeof parsed === 'object') {
+                  logBatch.push(parsed as IngestLogRecord);
+                }
               } else {
                 metricBatch.push(parsed as NetMetricSample);
               }
-            } catch (e) {
+            } catch {
               this.logger.warn(`Failed to parse payload from ${queue}`);
             }
           }
@@ -58,22 +66,22 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
         if (metricBatch.length > 0) {
           await this.flushNetMetrics(metricBatch);
         }
-      } catch (err: any) {
-        this.logger.error(`Error in ingest loop: ${err.message}`);
+      } catch (err: unknown) {
+        this.logger.error(`Error in ingest loop: ${this.getErrorMessage(err)}`);
         // Wait a bit before retrying on error
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
   }
 
-  private async flushLogs(logs: any[]) {
+  private async flushLogs(logs: IngestLogRecord[]) {
     try {
       const data = logs.map(log => ({
         timestamp: this.normalizeLogTimestamp(log.timestamp),
-        sourcePi: log.sourcePi || log.piId || 'unknown',
-        destPi: log.destPi || null,
+        sourcePi: this.normalizeSourcePi(log),
+        destPi: this.normalizeOptionalString(log.destPi),
         seqNum: log.seqNum ? Number(log.seqNum) : null,
-        logType: log.type || log.logType || null,
+        logType: this.normalizeOptionalString(log.type) ?? this.normalizeOptionalString(log.logType),
         payload: this.normalizeLogPayload(log),
       }));
 
@@ -82,8 +90,8 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
       });
 
       this.logger.debug(`Flushed batch of ${logs.length} logs to DB`);
-    } catch (err: any) {
-      this.logger.error(`Failed to flush batch to DB: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`Failed to flush batch to DB: ${this.getErrorMessage(err)}`);
       // In a real production system, you might want to push these back to a Dead Letter Queue (DLQ)
     }
   }
@@ -121,6 +129,18 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private normalizeOptionalString(value: unknown): string | null {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+
+    return null;
+  }
+
+  private normalizeSourcePi(log: IngestLogRecord): string {
+    return this.normalizeOptionalString(log.sourcePi) ?? this.normalizeOptionalString(log.piId) ?? 'unknown';
+  }
+
   private async flushNetMetrics(samples: NetMetricSample[]) {
     try {
       await this.prisma.networkInterfaceSample.createMany({
@@ -143,8 +163,8 @@ export class IngestWorker implements OnModuleInit, OnModuleDestroy {
       });
 
       this.logger.debug(`Flushed batch of ${samples.length} net metrics to DB`);
-    } catch (err: any) {
-      this.logger.error(`Failed to flush net metrics to DB: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`Failed to flush net metrics to DB: ${this.getErrorMessage(err)}`);
     }
   }
 }

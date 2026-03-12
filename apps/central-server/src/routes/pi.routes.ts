@@ -1,10 +1,22 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { getAllPis, getPiById, createPi, deletePi, checkDuplicateName, checkDuplicateIp, updatePi } from '../services/pi-registry.service.js';
 import { buildNetAgentConfig } from '../services/net-agent-config.service.js';
 import { getNetAgentRemoteStatus, runNetAgentRemoteAction } from '../services/net-agent-remote.service.js';
+import type { PiCreateRequest } from '@inslab/shared';
 
 export const piRouter = Router();
 type PiNetAgentAction = 'install' | 'configure' | 'restart' | 'sync-time' | 'uninstall';
+
+interface PiRouteParams {
+  id: string;
+}
+
+interface NetAgentSettingsBody {
+  sampleIntervalSec?: unknown;
+}
+
+type PiMutationBody = Partial<PiCreateRequest>;
 
 function parseSampleIntervalSec(value: unknown): number | undefined {
   if (value === undefined) return undefined;
@@ -51,7 +63,7 @@ piRouter.get('/:id/net-agent/status', async (req, res) => {
   }
 });
 
-piRouter.put('/:id/net-agent/settings', (req, res) => {
+piRouter.put('/:id/net-agent/settings', (req: Request<PiRouteParams, unknown, NetAgentSettingsBody>, res) => {
   const pi = getPiById(req.params.id);
   if (!pi) return res.status(404).json({ error: 'Not found' });
 
@@ -64,7 +76,7 @@ piRouter.put('/:id/net-agent/settings', (req, res) => {
   res.json(updatedPi);
 });
 
-async function handleNetAgentAction(req: any, res: any, action: PiNetAgentAction) {
+async function handleNetAgentAction(req: Request<PiRouteParams>, res: Response, action: PiNetAgentAction) {
   const pi = getPiById(req.params.id);
   if (!pi) return res.status(404).json({ error: 'Not found' });
 
@@ -97,7 +109,7 @@ piRouter.delete('/:id/net-agent', (req, res) => {
   handleNetAgentAction(req, res, 'uninstall');
 });
 
-piRouter.post('/', (req, res) => {
+piRouter.post('/', (req: Request<Record<string, never>, unknown, PiMutationBody>, res) => {
   const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey, netAgentSampleIntervalSec } = req.body;
   const sampleIntervalSec = parseSampleIntervalSec(netAgentSampleIntervalSec);
 
@@ -137,7 +149,7 @@ piRouter.post('/', (req, res) => {
   res.status(201).json(pi);
 });
 
-piRouter.put('/:id', (req, res) => {
+piRouter.put('/:id', (req: Request<PiRouteParams, unknown, PiMutationBody>, res) => {
   const { id } = req.params;
   const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey, netAgentSampleIntervalSec } = req.body;
   const sampleIntervalSec = parseSampleIntervalSec(netAgentSampleIntervalSec);
@@ -157,7 +169,7 @@ piRouter.put('/:id', (req, res) => {
   }
 
   if (authMethod === 'password' && !sshPassword) {
-    if (existingPi.authMethod !== 'password' || req.body.hasOwnProperty('sshPassword')) {
+    if (existingPi.authMethod !== 'password' || Object.prototype.hasOwnProperty.call(req.body, 'sshPassword')) {
       if (!sshPassword) {
          return res.status(400).json({ error: 'sshPassword is required for password authentication' });
       }

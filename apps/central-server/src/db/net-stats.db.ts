@@ -1,6 +1,19 @@
 import { getDb } from './connection.js';
 import type { NetworkInterfaceStat } from '@inslab/shared';
 
+interface NetStatsRow {
+  iface: string;
+  rx_bytes: number;
+  tx_bytes: number;
+  rx_packets: number | null;
+  tx_packets: number | null;
+  rx_bps: number;
+  tx_bps: number;
+  rx_pps: number;
+  tx_pps: number;
+  timestamp: number;
+}
+
 export function initNetStatsTable() {
   getDb().exec(`
     CREATE TABLE IF NOT EXISTS net_stats (
@@ -64,17 +77,17 @@ export function getLatestNetStats(piId: string): NetworkInterfaceStat[] {
     ) latest ON n.iface = latest.iface AND n.timestamp = latest.max_ts
     WHERE n.pi_id = ?
     ORDER BY n.iface
-  `).all(piId, piId) as any[];
+  `).all(piId, piId) as NetStatsRow[];
   return rows.map(rowToStat);
 }
 
 export function getNetStatsHistory(piId: string, iface?: string, limit = 60): NetworkInterfaceStat[] {
   let sql = 'SELECT * FROM net_stats WHERE pi_id = ?';
-  const params: any[] = [piId];
+  const params: Array<string | number> = [piId];
   if (iface) { sql += ' AND iface = ?'; params.push(iface); }
   sql += ' ORDER BY timestamp DESC LIMIT ?';
   params.push(limit);
-  const rows = getDb().prepare(sql).all(...params) as any[];
+  const rows = getDb().prepare(sql).all(...params) as NetStatsRow[];
   return rows.map(rowToStat);
 }
 
@@ -84,7 +97,7 @@ export function pruneOldNetStats() {
   getDb().prepare('DELETE FROM net_stats WHERE timestamp < ?').run(cutoff);
 }
 
-function rowToStat(row: any): NetworkInterfaceStat {
+function rowToStat(row: NetStatsRow): NetworkInterfaceStat {
   return {
     iface:     row.iface,
     rxBytes:   row.rx_bytes,

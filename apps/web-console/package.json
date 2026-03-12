@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && CENTRAL_SERVER_URL=http://localhost:3101 NEXT_PUBLIC_CENTRAL_SERVER_URL=http://localhost:3101 next dev -H localhost -p 3000",
+    "dev": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && CENTRAL_SERVER_URL=http://localhost:3101 NEXT_PUBLIC_CENTRAL_SERVER_URL=http://localhost:3101 node dev-server.js",
     "build": "next build",
     "start": "next start"
   },

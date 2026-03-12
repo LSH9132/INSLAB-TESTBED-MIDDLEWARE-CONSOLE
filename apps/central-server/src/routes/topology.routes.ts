@@ -3,14 +3,18 @@ import { getTopologyGraph, discoverTopology } from '../services/topology.service
 
 export const topologyRouter = Router();
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown error';
+}
+
 // GET /api/topology — 전체 그래프 반환
 topologyRouter.get('/', (_req, res) => {
   try {
     const graph = getTopologyGraph();
     res.json(graph);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[topology] GET error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: getErrorMessage(err) });
   }
 });
 

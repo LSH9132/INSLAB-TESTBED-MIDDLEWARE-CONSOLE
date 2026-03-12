@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { resolveWebSocketUrl } from '@/lib/urls';
 
-export function useWebSocket(path: string, onMessage: (data: any) => void) {
+export function useWebSocket<T>(path: string, onMessage: (data: T | string) => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
   const connectRef = useRef<(() => void) | null>(null);
@@ -18,7 +18,11 @@ export function useWebSocket(path: string, onMessage: (data: any) => void) {
       try {
         const ws = new WebSocket(resolveWebSocketUrl(path));
         ws.onmessage = (e) => {
-          try { onMessageRef.current(JSON.parse(e.data)); } catch { onMessageRef.current(e.data); }
+          try {
+            onMessageRef.current(JSON.parse(e.data) as T);
+          } catch {
+            onMessageRef.current(e.data);
+          }
         };
         ws.onclose = () => {
           setTimeout(connectRef.current!, 3000);

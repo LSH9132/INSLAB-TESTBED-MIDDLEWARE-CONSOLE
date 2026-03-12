@@ -5,4 +5,5 @@ export * from './types/net-agent.js';
 export * from './types/terminal.js';
 export * from './types/system.js';
 export * from './types/topology.js';
+export * from './types/ws.js';
 export * from './constants/protocols.js';

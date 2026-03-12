@@ -4,6 +4,10 @@ import type { SystemStatus, ServiceStatus } from '@inslab/shared';
 
 const startTime = Date.now();
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // Log Server 상태 확인
 async function checkLogServer(): Promise<ServiceStatus> {
   try {
@@ -25,10 +29,10 @@ async function checkLogServer(): Promise<ServiceStatus> {
         lastChecked: Date.now()
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 'offline',
-      message: error.message || '연결 실패',
+      message: getErrorMessage(error, '연결 실패'),
       lastChecked: Date.now()
     };
   }
@@ -46,10 +50,10 @@ function checkDatabase(): ServiceStatus {
       message: '정상',
       lastChecked: Date.now()
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 'offline',
-      message: error.message || 'DB 연결 실패',
+      message: getErrorMessage(error, 'DB 연결 실패'),
       lastChecked: Date.now()
     };
   }

@@ -1,6 +1,6 @@
 'use client';
 
-interface LogRow {
+export interface LogRow {
   id: number;
   timestamp: number;
   source_pi: string;

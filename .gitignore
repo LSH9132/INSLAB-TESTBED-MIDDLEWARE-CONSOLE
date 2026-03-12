@@ -18,4 +18,5 @@ data/postgres/*
 # E2E Test
 apps/web-console/e2e/
 apps/web-console/playwright-report/
+apps/web-console/test-results/
 apps/web-console/terminal-page.png

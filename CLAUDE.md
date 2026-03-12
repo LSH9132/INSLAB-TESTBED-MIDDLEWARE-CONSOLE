@@ -243,6 +243,12 @@ Project docs already exist in Notion and were updated with:
 
 If continuing documentation work, preserve old descriptions and add explicit comparison sections rather than silently replacing historical text.
 
+Repository-facing documentation now also exists in:
+- `README.md`
+- `PROJECT_ARCHITECTURE.md`
+- `docs/실험환경 구성.md`
+- `clients/net-agent/README.md`
+
 ## 10. Current Known Focus Areas
 
 These are reasonable next tasks for another agent:

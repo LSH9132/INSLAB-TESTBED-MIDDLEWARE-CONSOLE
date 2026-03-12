@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueryLogDto } from './dto/query-log.dto';
 
@@ -11,7 +12,7 @@ export class LogsService {
     const limit = Number(query.limit) || 100;
     const offset = Number(query.offset) || 0;
 
-    const where: any = {};
+    const where: Prisma.LogWhereInput = {};
 
     // Support both piId (old format) and sourcePi (new format)
     const targetPi = piId || sourcePi;
@@ -24,9 +25,10 @@ export class LogsService {
     }
 
     if (startTime || endTime) {
-      where.timestamp = {};
-      if (startTime) where.timestamp.gte = new Date(startTime);
-      if (endTime) where.timestamp.lte = new Date(endTime);
+      where.timestamp = {
+        ...(startTime ? { gte: new Date(startTime) } : {}),
+        ...(endTime ? { lte: new Date(endTime) } : {}),
+      };
     }
 
     const [totalItems, logs] = await Promise.all([

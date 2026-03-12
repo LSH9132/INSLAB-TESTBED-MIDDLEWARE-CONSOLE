@@ -4,9 +4,10 @@ import { apiFetch } from '@/lib/api';
 import { LogTable } from '@/components/logs/LogTable';
 import { LogFilter } from '@/components/logs/LogFilter';
 import type { LogType } from '@inslab/shared';
+import type { LogRow } from '@/components/logs/LogTable';
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<LogRow[]>([]);
   const [filter, setFilter] = useState<{ piId?: string; logType?: LogType }>({});
 
   const load = useCallback(() => {
@@ -14,7 +15,7 @@ export default function LogsPage() {
     if (filter.piId) params.set('piId', filter.piId);
     if (filter.logType) params.set('logType', filter.logType);
     params.set('limit', '200');
-    apiFetch<any[]>(`/api/logs?${params}`).then(setLogs).catch(console.error);
+    apiFetch<LogRow[]>(`/api/logs?${params}`).then(setLogs).catch(console.error);
   }, [filter]);
 
   useEffect(() => { load(); }, [load]);

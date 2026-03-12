@@ -2,23 +2,42 @@ import { v4 as uuid } from 'uuid';
 import { getDb } from '../db/connection.js';
 import type { PiNode, PiCreateRequest, PiAuthMethod } from '@inslab/shared';
 
+interface PiNodeRow {
+  id: string;
+  name: string;
+  ip: string;
+  ssh_port: number;
+  ssh_user: string;
+  auth_method: PiAuthMethod | null;
+  ssh_password: string | null;
+  ssh_private_key: string | null;
+  net_agent_sample_interval_sec: number | null;
+  status: PiNode['status'];
+  last_seen: number | null;
+  created_at: number;
+}
+
+interface IdRow {
+  id: string;
+}
+
 export function getAllPis(): PiNode[] {
-  const rows = getDb().prepare('SELECT * FROM pi_nodes ORDER BY created_at').all() as any[];
+  const rows = getDb().prepare('SELECT * FROM pi_nodes ORDER BY created_at').all() as PiNodeRow[];
   return rows.map(rowToPiNode);
 }
 
 export function getPiById(id: string): PiNode | undefined {
-  const row = getDb().prepare('SELECT * FROM pi_nodes WHERE id = ?').get(id) as any;
+  const row = getDb().prepare('SELECT * FROM pi_nodes WHERE id = ?').get(id) as PiNodeRow | undefined;
   return row ? rowToPiNode(row) : undefined;
 }
 
 export function checkDuplicateName(name: string): boolean {
-  const row = getDb().prepare('SELECT id FROM pi_nodes WHERE name = ?').get(name) as any;
+  const row = getDb().prepare('SELECT id FROM pi_nodes WHERE name = ?').get(name) as IdRow | undefined;
   return !!row;
 }
 
 export function checkDuplicateIp(ip: string): boolean {
-  const row = getDb().prepare('SELECT id FROM pi_nodes WHERE ip = ?').get(ip) as any;
+  const row = getDb().prepare('SELECT id FROM pi_nodes WHERE ip = ?').get(ip) as IdRow | undefined;
   return !!row;
 }
 
@@ -48,7 +67,7 @@ export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | un
   if (!existing) return undefined;
 
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: Array<string | number | null> = [];
 
   if (req.name !== undefined) {
     updates.push('name = ?');
@@ -100,7 +119,7 @@ export function updatePiStatus(id: string, status: string) {
   getDb().prepare('UPDATE pi_nodes SET status = ?, last_seen = unixepoch() WHERE id = ?').run(status, id);
 }
 
-function rowToPiNode(row: any): PiNode {
+function rowToPiNode(row: PiNodeRow): PiNode {
   return {
     id: row.id,
     name: row.name,

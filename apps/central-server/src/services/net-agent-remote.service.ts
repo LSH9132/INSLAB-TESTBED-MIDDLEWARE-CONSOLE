@@ -1,4 +1,5 @@
 import { Client } from 'ssh2';
+import type { ConnectConfig } from 'ssh2';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
@@ -51,7 +52,7 @@ function resolveAssetPath(fileName: string): string {
 }
 
 function buildConnectOptions(pi: PiNode) {
-  const connectOptions: any = {
+  const connectOptions: ConnectConfig = {
     host: pi.ip,
     port: pi.sshPort,
     username: pi.sshUser,

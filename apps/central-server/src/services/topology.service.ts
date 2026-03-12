@@ -2,8 +2,26 @@ import { getDb } from '../db/connection.js';
 import { getAllPis } from './pi-registry.service.js';
 import type { TopologyLink, TopologyNode, TopologyGraph } from '@inslab/shared';
 import { Client } from 'ssh2';
+import type { ConnectConfig } from 'ssh2';
 import { readFileSync } from 'fs';
 import { config } from '../config.js';
+
+interface TopologyLinkRow {
+  id: string;
+  node_a: string;
+  node_b: string;
+  vlan: number;
+  iface: string;
+  ip_a: string;
+  ip_b: string;
+  status: TopologyLink['status'];
+  last_scan: number | null;
+  source: TopologyLink['source'];
+}
+
+interface LastScanRow {
+  last_scan: number | null;
+}
 
 // ─────────────────────────────────────────────
 // 문서 기반 정적 토폴로지 데이터 (14노드, 27링크)
@@ -72,7 +90,7 @@ export function seedStaticTopology() {
 export function getTopologyGraph(): TopologyGraph {
   const db = getDb();
 
-  const linkRows = db.prepare('SELECT * FROM topology_links ORDER BY node_a, node_b').all() as any[];
+  const linkRows = db.prepare('SELECT * FROM topology_links ORDER BY node_a, node_b').all() as TopologyLinkRow[];
   const links: TopologyLink[] = linkRows.map(rowToLink);
 
   // pi_nodes 등록 목록으로 status 매핑
@@ -96,7 +114,7 @@ export function getTopologyGraph(): TopologyGraph {
 
   const lastScanRow = db.prepare(
     'SELECT MAX(last_scan) as last_scan FROM topology_links WHERE last_scan IS NOT NULL'
-  ).get() as any;
+  ).get() as LastScanRow | undefined;
 
   return {
     nodes,
@@ -105,7 +123,7 @@ export function getTopologyGraph(): TopologyGraph {
   };
 }
 
-function rowToLink(row: any): TopologyLink {
+function rowToLink(row: TopologyLinkRow): TopologyLink {
   return {
     id: row.id,
     nodeA: row.node_a,
@@ -138,7 +156,7 @@ export async function discoverTopology(): Promise<void> {
         pi.sshPort,
         pi.sshUser,
         pi.authMethod,
-        (pi as any).sshPassword,
+        pi.sshPassword,
         "ip -o -4 addr show 2>/dev/null | awk '$2 ~ /^int/ {print $2, $4}'"
       );
 
@@ -153,7 +171,7 @@ export async function discoverTopology(): Promise<void> {
       const piName = pi.name;
       const linkRows = db.prepare(
         "SELECT * FROM topology_links WHERE node_a = ? OR node_b = ?"
-      ).all(piName, piName) as any[];
+      ).all(piName, piName) as TopologyLinkRow[];
 
       for (const link of linkRows) {
         const isUp = activeIfaces.has(link.iface);
@@ -161,8 +179,9 @@ export async function discoverTopology(): Promise<void> {
       }
 
       console.log(`[topology] Scanned ${piName}: ${activeIfaces.size} active int* interfaces`);
-    } catch (err: any) {
-      console.warn(`[topology] SSH scan failed for ${pi.name} (${pi.ip}): ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'unknown error';
+      console.warn(`[topology] SSH scan failed for ${pi.name} (${pi.ip}): ${message}`);
     }
   }
 }
@@ -191,7 +210,7 @@ function sshExec(
 
     ssh.on('error', reject);
 
-    const connectOptions: any = { host, port, username, readyTimeout: 5000 };
+    const connectOptions: ConnectConfig = { host, port, username, readyTimeout: 5000 };
 
     if (authMethod === 'password' && sshPassword) {
       connectOptions.password = sshPassword;

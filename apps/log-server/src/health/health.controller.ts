@@ -17,8 +17,12 @@ export class HealthController {
         version: '2.0.0-nestjs',
         compatibility: getNetAgentCompatibilityInfo(),
       };
-    } catch (e: any) {
-      return { status: 'error', db: 'disconnected', error: e.message };
+    } catch (e: unknown) {
+      return {
+        status: 'error',
+        db: 'disconnected',
+        error: e instanceof Error ? e.message : 'unknown error',
+      };
     }
   }
 }

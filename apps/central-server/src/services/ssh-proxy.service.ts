@@ -1,4 +1,5 @@
 import { Client } from 'ssh2';
+import type { ConnectConfig } from 'ssh2';
 import type WebSocket from 'ws';
 import type { PiAuthMethod } from '@inslab/shared';
 
@@ -56,7 +57,7 @@ export function attachTerminal(
   });
 
   try {
-    const connectOptions: any = {
+    const connectOptions: ConnectConfig = {
       host,
       port,
       username,
@@ -73,8 +74,9 @@ export function attachTerminal(
     }
 
     ssh.connect(connectOptions);
-  } catch (err: any) {
-    ws.send(`\r\nFailed to start SSH connection: ${err.message}\r\n`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    ws.send(`\r\nFailed to start SSH connection: ${message}\r\n`);
     ws.close();
   }
 }
