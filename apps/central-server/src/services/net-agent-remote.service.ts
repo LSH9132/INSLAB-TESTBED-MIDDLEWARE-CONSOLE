@@ -7,7 +7,7 @@ import type {
   NetAgentRemoteOperationResult,
   NetAgentRemoteStatus,
   NetAgentServiceState,
-  PiNode,
+  StoredPiNode,
 } from '@inslab/shared';
 import { config } from '../config.js';
 import { buildNetAgentConfig } from './net-agent-config.service.js';
@@ -51,7 +51,7 @@ function resolveAssetPath(fileName: string): string {
   return matched;
 }
 
-function buildConnectOptions(pi: PiNode) {
+function buildConnectOptions(pi: StoredPiNode) {
   const connectOptions: ConnectConfig = {
     host: pi.ip,
     port: pi.sshPort,
@@ -74,7 +74,7 @@ function buildConnectOptions(pi: PiNode) {
   return connectOptions;
 }
 
-function connectToPi(pi: PiNode): Promise<Client> {
+function connectToPi(pi: StoredPiNode): Promise<Client> {
   return new Promise((resolve, reject) => {
     const ssh = new Client();
     ssh.on('ready', () => resolve(ssh));
@@ -195,7 +195,7 @@ async function syncRemoteClock(ssh: Client, sudoPassword?: string | null) {
   await execRemote(ssh, command, sudoPassword);
 }
 
-async function withPiConnection<T>(pi: PiNode, fn: (ssh: Client) => Promise<T>): Promise<T> {
+async function withPiConnection<T>(pi: StoredPiNode, fn: (ssh: Client) => Promise<T>): Promise<T> {
   const ssh = await connectToPi(pi);
   try {
     return await fn(ssh);
@@ -204,7 +204,7 @@ async function withPiConnection<T>(pi: PiNode, fn: (ssh: Client) => Promise<T>):
   }
 }
 
-async function uploadNetAgentBundle(ssh: Client, pi: PiNode) {
+async function uploadNetAgentBundle(ssh: Client, pi: StoredPiNode) {
   const tempDir = mkdtempSync(path.join(tmpdir(), 'net-agent-'));
   const envFilePath = path.join(tempDir, 'net-agent.env');
   const servicePath = resolveAssetPath('net-agent.service');
@@ -225,12 +225,12 @@ async function uploadNetAgentBundle(ssh: Client, pi: PiNode) {
   return remoteTempBase;
 }
 
-export async function getNetAgentRemoteStatus(pi: PiNode): Promise<NetAgentRemoteStatus> {
+export async function getNetAgentRemoteStatus(pi: StoredPiNode): Promise<NetAgentRemoteStatus> {
   return withPiConnection(pi, async (ssh) => queryStatus(ssh, pi.authMethod === 'password' ? pi.sshPassword : null));
 }
 
 export async function runNetAgentRemoteAction(
-  pi: PiNode,
+  pi: StoredPiNode,
   action: PiNetAgentAction,
 ): Promise<NetAgentRemoteOperationResult> {
   return withPiConnection(pi, async (ssh) => {

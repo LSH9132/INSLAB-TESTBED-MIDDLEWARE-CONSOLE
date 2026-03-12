@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { getDb } from '../db/connection.js';
-import type { PiNode, PiCreateRequest, PiAuthMethod } from '@inslab/shared';
+import type { PiNode, PiCreateRequest, PiAuthMethod, StoredPiNode } from '@inslab/shared';
 
 interface PiNodeRow {
   id: string;
@@ -23,12 +23,22 @@ interface IdRow {
 
 export function getAllPis(): PiNode[] {
   const rows = getDb().prepare('SELECT * FROM pi_nodes ORDER BY created_at').all() as PiNodeRow[];
-  return rows.map(rowToPiNode);
+  return rows.map(rowToStoredPiNode).map(toPublicPiNode);
 }
 
 export function getPiById(id: string): PiNode | undefined {
   const row = getDb().prepare('SELECT * FROM pi_nodes WHERE id = ?').get(id) as PiNodeRow | undefined;
-  return row ? rowToPiNode(row) : undefined;
+  return row ? toPublicPiNode(rowToStoredPiNode(row)) : undefined;
+}
+
+export function getAllStoredPis(): StoredPiNode[] {
+  const rows = getDb().prepare('SELECT * FROM pi_nodes ORDER BY created_at').all() as PiNodeRow[];
+  return rows.map(rowToStoredPiNode);
+}
+
+export function getStoredPiById(id: string): StoredPiNode | undefined {
+  const row = getDb().prepare('SELECT * FROM pi_nodes WHERE id = ?').get(id) as PiNodeRow | undefined;
+  return row ? rowToStoredPiNode(row) : undefined;
 }
 
 export function checkDuplicateName(name: string): boolean {
@@ -41,7 +51,7 @@ export function checkDuplicateIp(ip: string): boolean {
   return !!row;
 }
 
-export function createPi(req: PiCreateRequest): PiNode {
+export function createPi(req: PiCreateRequest): StoredPiNode {
   const id = uuid();
 
   getDb().prepare(`
@@ -59,11 +69,11 @@ export function createPi(req: PiCreateRequest): PiNode {
     req.netAgentSampleIntervalSec ?? 5,
   );
 
-  return getPiById(id)!;
+  return getStoredPiById(id)!;
 }
 
-export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | undefined {
-  const existing = getPiById(id);
+export function updatePi(id: string, req: Partial<PiCreateRequest>): StoredPiNode | undefined {
+  const existing = getStoredPiById(id);
   if (!existing) return undefined;
 
   const updates: string[] = [];
@@ -107,7 +117,7 @@ export function updatePi(id: string, req: Partial<PiCreateRequest>): PiNode | un
     getDb().prepare(`UPDATE pi_nodes SET ${updates.join(', ')} WHERE id = ?`).run(...params);
   }
 
-  return getPiById(id);
+  return getStoredPiById(id);
 }
 
 export function deletePi(id: string): boolean {
@@ -119,7 +129,23 @@ export function updatePiStatus(id: string, status: string) {
   getDb().prepare('UPDATE pi_nodes SET status = ?, last_seen = unixepoch() WHERE id = ?').run(status, id);
 }
 
-function rowToPiNode(row: PiNodeRow): PiNode {
+export function toPublicPiNode(pi: StoredPiNode): PiNode {
+  return {
+    id: pi.id,
+    name: pi.name,
+    ip: pi.ip,
+    sshPort: pi.sshPort,
+    sshUser: pi.sshUser,
+    authMethod: pi.authMethod,
+    hasSshPrivateKey: Boolean(pi.sshPrivateKey),
+    netAgentSampleIntervalSec: pi.netAgentSampleIntervalSec,
+    status: pi.status,
+    lastSeen: pi.lastSeen,
+    createdAt: pi.createdAt,
+  };
+}
+
+function rowToStoredPiNode(row: PiNodeRow): StoredPiNode {
   return {
     id: row.id,
     name: row.name,
@@ -127,6 +153,7 @@ function rowToPiNode(row: PiNodeRow): PiNode {
     sshPort: row.ssh_port,
     sshUser: row.ssh_user,
     authMethod: (row.auth_method ?? 'key') as PiAuthMethod,
+    hasSshPrivateKey: Boolean(row.ssh_private_key),
     sshPassword: row.ssh_password ?? null,
     sshPrivateKey: row.ssh_private_key ?? null,
     netAgentSampleIntervalSec: row.net_agent_sample_interval_sec ?? 5,

@@ -1,5 +1,5 @@
 import { getDb } from '../db/connection.js';
-import { getAllPis } from './pi-registry.service.js';
+import { getAllPis, getAllStoredPis } from './pi-registry.service.js';
 import type { TopologyLink, TopologyNode, TopologyGraph } from '@inslab/shared';
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
@@ -142,7 +142,7 @@ function rowToLink(row: TopologyLinkRow): TopologyLink {
 // SSH Discover: 각 Pi ssh → ip addr → int* 파싱
 // ─────────────────────────────────────────────
 export async function discoverTopology(): Promise<void> {
-  const pis = getAllPis();
+  const pis = getAllStoredPis();
   const db = getDb();
 
   const updateStatus = db.prepare(

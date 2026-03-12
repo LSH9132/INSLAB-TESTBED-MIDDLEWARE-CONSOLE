@@ -1,6 +1,16 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { getAllPis, getPiById, createPi, deletePi, checkDuplicateName, checkDuplicateIp, updatePi } from '../services/pi-registry.service.js';
+import {
+  getAllPis,
+  getPiById,
+  getStoredPiById,
+  createPi,
+  deletePi,
+  checkDuplicateName,
+  checkDuplicateIp,
+  updatePi,
+  toPublicPiNode,
+} from '../services/pi-registry.service.js';
 import { buildNetAgentConfig } from '../services/net-agent-config.service.js';
 import { getNetAgentRemoteStatus, runNetAgentRemoteAction } from '../services/net-agent-remote.service.js';
 import type { PiCreateRequest } from '@inslab/shared';
@@ -38,7 +48,7 @@ piRouter.get('/:id', (req, res) => {
 });
 
 piRouter.get('/:id/net-agent-config', async (req, res) => {
-  const pi = getPiById(req.params.id);
+  const pi = getStoredPiById(req.params.id);
   if (!pi) return res.status(404).json({ error: 'Not found' });
 
   try {
@@ -51,7 +61,7 @@ piRouter.get('/:id/net-agent-config', async (req, res) => {
 });
 
 piRouter.get('/:id/net-agent/status', async (req, res) => {
-  const pi = getPiById(req.params.id);
+  const pi = getStoredPiById(req.params.id);
   if (!pi) return res.status(404).json({ error: 'Not found' });
 
   try {
@@ -73,11 +83,11 @@ piRouter.put('/:id/net-agent/settings', (req: Request<PiRouteParams, unknown, Ne
   }
 
   const updatedPi = updatePi(req.params.id, { netAgentSampleIntervalSec: sampleIntervalSec });
-  res.json(updatedPi);
+  res.json(updatedPi ? toPublicPiNode(updatedPi) : updatedPi);
 });
 
 async function handleNetAgentAction(req: Request<PiRouteParams>, res: Response, action: PiNetAgentAction) {
-  const pi = getPiById(req.params.id);
+  const pi = getStoredPiById(req.params.id);
   if (!pi) return res.status(404).json({ error: 'Not found' });
 
   try {
@@ -146,7 +156,7 @@ piRouter.post('/', (req: Request<Record<string, never>, unknown, PiMutationBody>
     sshPrivateKey,
     netAgentSampleIntervalSec: sampleIntervalSec,
   });
-  res.status(201).json(pi);
+  res.status(201).json(toPublicPiNode(pi));
 });
 
 piRouter.put('/:id', (req: Request<PiRouteParams, unknown, PiMutationBody>, res) => {
@@ -154,7 +164,7 @@ piRouter.put('/:id', (req: Request<PiRouteParams, unknown, PiMutationBody>, res)
   const { name, ip, sshPort, sshUser, authMethod, sshPassword, sshPrivateKey, netAgentSampleIntervalSec } = req.body;
   const sampleIntervalSec = parseSampleIntervalSec(netAgentSampleIntervalSec);
 
-  const existingPi = getPiById(id);
+  const existingPi = getStoredPiById(id);
   if (!existingPi) return res.status(404).json({ error: 'Not found' });
 
   if (netAgentSampleIntervalSec !== undefined && Number.isNaN(sampleIntervalSec)) {
@@ -186,7 +196,7 @@ piRouter.put('/:id', (req: Request<PiRouteParams, unknown, PiMutationBody>, res)
     sshPrivateKey,
     netAgentSampleIntervalSec: sampleIntervalSec,
   });
-  res.json(updatedPi);
+  res.json(updatedPi ? toPublicPiNode(updatedPi) : updatedPi);
 });
 
 piRouter.delete('/:id', (req, res) => {
